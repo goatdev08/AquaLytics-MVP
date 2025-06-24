@@ -1,0 +1,11 @@
+# Task ID: 1
+# Title: Initialize Next.js 15 Project with TypeScript
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Set up the foundational Next.js 15 project with App Router, TypeScript, and essential configurations
+# Details:
+Create new Next.js 15 project using `npx create-next-app@latest aqualytics --typescript --tailwind --eslint --app --src-dir=false`. Configure next.config.js for serverless functions, set up TypeScript strict mode, and configure ESLint with Next.js rules. Install core dependencies: @supabase/supabase-js@^2.39.0, zustand@^4.4.7, react-hook-form@^7.48.2, @hookform/resolvers@^3.3.2, zod@^3.22.4, chart.js@^4.4.0, react-chartjs-2@^5.2.0, date-fns@^2.30.0, clsx@^2.0.0, tailwind-merge@^2.0.0. Set up folder structure according to PRD specifications.
+
+# Test Strategy:
+Verify project builds successfully with `npm run build`, TypeScript compiles without errors, and all dependencies are correctly installed. Test dev server starts on localhost:3000.

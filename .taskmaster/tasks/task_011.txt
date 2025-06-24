@@ -1,0 +1,11 @@
+# Task ID: 11
+# Title: Build Swimmer Management System
+# Status: pending
+# Dependencies: 8, 10
+# Priority: medium
+# Description: Create CRUD operations for swimmer management with forms and API integration
+# Details:
+Create components/forms/SwimmerForm.tsx using React Hook Form with Zod validation for swimmer creation/editing (nombre, edad optional, peso optional). Build app/api/swimmers/route.ts with GET (list all swimmers with metrics), POST (create swimmer), PUT (update swimmer), DELETE (remove swimmer) endpoints. Implement lib/hooks/useSwimmers.ts custom hook for swimmer operations with caching and optimistic updates. Create swimmer selection components for forms and filters.
+
+# Test Strategy:
+Test CRUD operations work correctly, verify form validation prevents invalid submissions, validate optimistic updates with error rollback, and ensure swimmer data displays properly in all components.

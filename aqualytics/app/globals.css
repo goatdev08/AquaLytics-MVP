@@ -1,0 +1,281 @@
+@import "tailwindcss";
+
+/* Phoenix Theme Variables */
+:root {
+  /* Phoenix Color Palette */
+  --phoenix-red: #DC2626;
+  --phoenix-orange: #EA580C;
+  --phoenix-yellow: #D97706;
+  
+  /* Light Mode Colors */
+  --background: #ffffff;
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --primary: var(--phoenix-red);
+  --primary-foreground: #ffffff;
+  --secondary: var(--phoenix-orange);
+  --secondary-foreground: #ffffff;
+  --accent: var(--phoenix-yellow);
+  --accent-foreground: #ffffff;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --input: #ffffff;
+  --ring: var(--phoenix-red);
+}
+
+/* Dark Mode Colors */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --card: #1a1a1a;
+    --card-foreground: #ededed;
+    --primary: #EF4444;
+    --primary-foreground: #ffffff;
+    --secondary: #FB923C;
+    --secondary-foreground: #ffffff;
+    --accent: #FBBF24;
+    --accent-foreground: #000000;
+    --muted: #1e293b;
+    --muted-foreground: #94a3b8;
+    --border: #334155;
+    --input: #1a1a1a;
+    --ring: #EF4444;
+  }
+}
+
+/* TailwindCSS v4 Theme Configuration */
+@theme inline {
+  /* Colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  /* Phoenix Specific Colors */
+  --color-phoenix-red: var(--phoenix-red);
+  --color-phoenix-orange: var(--phoenix-orange);
+  --color-phoenix-yellow: var(--phoenix-yellow);
+  
+  /* Phoenix Gradients */
+  --color-phoenix-gradient-primary: linear-gradient(135deg, var(--phoenix-red) 0%, var(--phoenix-orange) 50%, var(--phoenix-yellow) 100%);
+  --color-phoenix-gradient-warm: linear-gradient(45deg, var(--phoenix-orange) 0%, var(--phoenix-yellow) 100%);
+  --color-phoenix-gradient-fire: linear-gradient(180deg, var(--phoenix-red) 0%, var(--phoenix-orange) 100%);
+  
+  /* Responsive Breakpoints */
+  --breakpoint-xs: 320px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+  
+  /* Phoenix Custom Breakpoints */
+  --breakpoint-mobile: 320px;
+  --breakpoint-tablet: 641px;
+  --breakpoint-desktop: 1025px;
+  
+  /* Fonts */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  
+  /* Enhanced Shadows with Phoenix Theme */
+  --shadow-phoenix: 0 4px 6px -1px rgba(220, 38, 38, 0.1), 0 2px 4px -1px rgba(220, 38, 38, 0.06);
+  --shadow-phoenix-lg: 0 10px 15px -3px rgba(220, 38, 38, 0.15), 0 4px 6px -2px rgba(220, 38, 38, 0.1);
+  --shadow-phoenix-xl: 0 20px 25px -5px rgba(220, 38, 38, 0.2), 0 10px 10px -5px rgba(220, 38, 38, 0.1);
+  --shadow-glow: 0 0 20px rgba(220, 38, 38, 0.3);
+}
+
+/* Global Styles */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  line-height: 1.6;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Phoenix Utility Classes */
+.phoenix-gradient {
+  background: var(--color-phoenix-gradient-primary);
+}
+
+.phoenix-gradient-warm {
+  background: var(--color-phoenix-gradient-warm);
+}
+
+.phoenix-gradient-fire {
+  background: var(--color-phoenix-gradient-fire);
+}
+
+.phoenix-text-gradient {
+  background: var(--color-phoenix-gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.phoenix-shadow {
+  box-shadow: var(--shadow-phoenix);
+}
+
+.phoenix-shadow-lg {
+  box-shadow: var(--shadow-phoenix-lg);
+}
+
+.phoenix-shadow-xl {
+  box-shadow: var(--shadow-phoenix-xl);
+}
+
+/* Enhanced Hover Effects */
+.phoenix-hover {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+}
+
+.phoenix-hover:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: var(--shadow-phoenix-xl);
+}
+
+.phoenix-button {
+  background: var(--color-phoenix-gradient-primary);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+
+.phoenix-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.phoenix-button:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: var(--shadow-phoenix-xl), var(--shadow-glow);
+  filter: brightness(1.1);
+}
+
+.phoenix-button:hover::before {
+  left: 100%;
+}
+
+.phoenix-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  padding: 2rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+
+.phoenix-card:hover {
+  box-shadow: var(--shadow-phoenix-xl);
+  border-color: var(--phoenix-red);
+  background: var(--card);
+}
+
+/* Icon Container Styles */
+.phoenix-icon-container {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+
+.phoenix-icon-container::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.4s ease;
+}
+
+.phoenix-card:hover .phoenix-icon-container {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.phoenix-card:hover .phoenix-icon-container::before {
+  width: 100%;
+  height: 100%;
+}
+
+/* Stats Animation */
+.phoenix-stat {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.phoenix-stat:hover {
+  transform: scale(1.1);
+}
+
+/* Enhanced Typography */
+.phoenix-title {
+  background: var(--color-phoenix-gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Subtle Background Patterns */
+.phoenix-pattern {
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(220, 38, 38, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(234, 88, 12, 0.05) 0%, transparent 50%);
+}
+
+/* Loading Animation */
+@keyframes phoenix-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.phoenix-pulse {
+  animation: phoenix-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

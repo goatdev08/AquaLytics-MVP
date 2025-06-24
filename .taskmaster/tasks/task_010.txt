@@ -1,0 +1,11 @@
+# Task ID: 10
+# Title: Create Data Validation System
+# Status: pending
+# Dependencies: 6, 9
+# Priority: high
+# Description: Implement comprehensive data validation for both frontend and backend
+# Details:
+Create lib/utils/validators.ts with Zod schemas for MetricFormSchema including all validation rules (time ranges 5.00-180.00s, stroke counts 1-100, underwater distances 0.00-15.00m, consistency checks T_TOTAL ≥ T25_1 + T25_2). Implement api/utils/data_validation.py with DataValidator class for backend validation including single metric validation, consistency checks, and detailed error messages. Create validation utilities for CSV data format checking and real-time form validation feedback.
+
+# Test Strategy:
+Test all validation rules with edge cases, verify frontend validation provides immediate feedback, ensure backend validation catches all invalid data, and validate error messages are user-friendly.

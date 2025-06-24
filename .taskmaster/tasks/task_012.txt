@@ -1,0 +1,11 @@
+# Task ID: 12
+# Title: Implement Competition and Reference Data Management
+# Status: pending
+# Dependencies: 11
+# Priority: medium
+# Description: Create management interfaces for competitions, distances, strokes, and phases
+# Details:
+Build components/forms/CompetitionForm.tsx for competition CRUD with date range validation. Create app/api/competitions/route.ts for competition management. Implement reference data management for distancias, estilos, fases with proper seeding. Create selection components for all reference data types. Build admin interface for managing reference data with proper validation and error handling.
+
+# Test Strategy:
+Test all reference data CRUD operations, verify date range validation for competitions, ensure proper foreign key relationships, and validate selection components work in forms.

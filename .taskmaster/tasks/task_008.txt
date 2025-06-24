@@ -1,0 +1,11 @@
+# Task ID: 8
+# Title: Implement Zustand State Management Stores
+# Status: pending
+# Dependencies: 6
+# Priority: medium
+# Description: Set up centralized state management for swimmers, metrics, and UI state
+# Details:
+Create lib/store/ directory with: swimmers-store.ts (swimmer CRUD operations, current swimmer selection, swimmer list with caching), metrics-store.ts (metrics data, calculations cache, filter state), ui-store.ts (modal states, loading states, theme preferences, sidebar collapse state). Each store should include proper TypeScript typing, persistence for relevant data, optimistic updates, and error handling. Implement store devtools integration for development.
+
+# Test Strategy:
+Test store actions update state correctly, verify persistence works across browser sessions, validate optimistic updates with rollback on errors, and ensure store devtools show proper state changes.

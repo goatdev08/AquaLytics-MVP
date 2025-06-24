@@ -1,0 +1,11 @@
+# Task ID: 18
+# Title: Build Main Dashboard Page
+# Status: pending
+# Dependencies: 16, 17
+# Priority: high
+# Description: Create the primary dashboard with key metrics overview and navigation
+# Details:
+Build app/page.tsx as main dashboard with: header metrics cards (total swimmers, active competitions, recent analyses), main visualization area (progression chart for last 30 days, stroke distribution chart, top 5 swimmers by improvement), quick action buttons (new record, upload CSV, view rankings). Implement real-time data updates, loading states, and error boundaries. Use Zustand stores for data management and implement proper SEO metadata.
+
+# Test Strategy:
+Test dashboard loads within 2 seconds, verify all metrics display correctly, validate quick actions navigate properly, and ensure real-time updates work without page refresh.

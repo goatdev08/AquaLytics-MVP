@@ -1,0 +1,11 @@
+# Task ID: 21
+# Title: Implement API Routes and Data Layer
+# Status: pending
+# Dependencies: 15, 20
+# Priority: medium
+# Description: Complete the Next.js API routes for frontend-backend communication
+# Details:
+Build app/api/swimmers/route.ts with full CRUD operations, proper error handling, and response formatting. Create app/api/competitions/route.ts for competition management. Build app/api/metrics/route.ts for metrics querying with filtering support. Create app/api/upload-csv/route.ts as proxy to Python serverless functions. Implement proper HTTP status codes, error responses, and request validation for all endpoints.
+
+# Test Strategy:
+Test all API endpoints with various inputs, verify error handling returns appropriate status codes, validate request/response formats match TypeScript interfaces, and ensure proper authentication/authorization where needed.

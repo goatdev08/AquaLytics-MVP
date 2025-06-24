@@ -1,0 +1,11 @@
+# Task ID: 22
+# Title: Add Custom React Hooks for Data Management
+# Status: pending
+# Dependencies: 21
+# Priority: medium
+# Description: Create custom hooks for efficient data fetching and state management
+# Details:
+Build lib/hooks/useSwimmers.ts with swimmer CRUD operations, caching, and optimistic updates. Create lib/hooks/useMetrics.ts for metrics data fetching with filtering and pagination. Build lib/hooks/useChartData.ts for chart data transformation and caching. Implement lib/hooks/useFilters.ts for filter state management and URL synchronization. Add proper error handling, loading states, and TypeScript typing to all hooks.
+
+# Test Strategy:
+Test hooks handle loading and error states correctly, verify caching reduces unnecessary API calls, validate optimistic updates work with proper rollback, and ensure hooks are properly typed and reusable.

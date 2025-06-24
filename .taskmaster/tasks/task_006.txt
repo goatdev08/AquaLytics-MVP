@@ -1,0 +1,11 @@
+# Task ID: 6
+# Title: Implement TypeScript Types and Database Interfaces
+# Status: pending
+# Dependencies: 4
+# Priority: medium
+# Description: Create comprehensive TypeScript definitions for database entities and API responses
+# Details:
+Create lib/types/ directory with: database.ts (Supabase table types: Nadador, Competencia, Distancia, Estilo, Fase, Parametro, Registro), metrics.ts (MetricFormData interface, AutomaticMetrics interface, MetricCalculationInput), api.ts (API request/response types, error handling types). Generate types from Supabase schema using supabase gen types. Create utility types for form validation, chart data structures, and filter interfaces. Ensure all types are exported from a central index.ts file.
+
+# Test Strategy:
+Verify TypeScript compilation with strict mode, test type inference works correctly, validate all database operations are properly typed, and ensure no 'any' types are used in production code.
