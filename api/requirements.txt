@@ -1,0 +1,36 @@
+# AquaLytics - Python Serverless Functions Dependencies
+# Core Framework
+starlette==0.36.3
+uvicorn==0.24.0
+
+# Data Processing
+pandas==2.2.0
+numpy==1.26.2
+
+# Database
+supabase-py==2.3.0
+
+# HTTP & File Handling
+python-multipart==0.0.6
+httpx==0.25.2
+
+# Environment & Configuration
+python-dotenv==1.0.0
+
+# Data Validation
+pydantic==2.5.0
+
+# Date/Time Handling
+python-dateutil==2.8.2
+
+# Logging
+structlog==23.2.0
+
+# Error Handling & Monitoring
+sentry-sdk==1.38.0
+
+# CSV Processing
+chardet==5.2.0
+
+# Type Hints Support
+typing-extensions==4.8.0 

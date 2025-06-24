@@ -157,22 +157,115 @@
       {
         "id": 4,
         "title": "Create Database Schema and Seed Data",
-        "description": "Set up the complete database schema in Supabase Phoenixdb with all required tables and relationships",
-        "details": "Create tables in Supabase: nadadores (id_nadador PK, nombre, edad, peso), competencias (competencia_id PK, competencia, periodo), distancias (distancia_id PK, distancia), estilos (estilo_id PK, estilo), fases (fase_id PK, fase), parametros (parametro_id PK, parametro, tipo, global), registros (registro_id PK, competencia_id FK, fecha, id_nadador FK, distancia_id FK, estilo_id FK, fase_id FK, parametro_id FK, segmento, valor). Set up foreign key relationships and indexes. Seed reference data for distancias (25, 50, 100, 200, 400, 800, 1500), estilos (Crol, Pecho, Dorso, Mariposa, Combinado), fases (Entrenamiento, Competencia, Prueba), and parametros (10 manual + 6 automatic metrics).",
-        "testStrategy": "Verify all tables are created with correct data types and constraints, test foreign key relationships work properly, validate seed data is inserted correctly, and ensure indexes improve query performance.",
-        "priority": "high",
+        "description": "Set up the complete database schema integration with the existing Supabase Phoenixdb database, including TypeScript models, helper functions, and automatic calculation utilities",
+        "status": "done",
         "dependencies": [
           2
         ],
-        "status": "pending",
+        "priority": "high",
+        "details": "The Phoenixdb database already exists with all required tables and data: nadadores (id_nadador PK, nombre, edad, peso), competencias (competencia_id PK, competencia, periodo), distancias (distancia_id PK, distancia), estilos (estilo_id PK, estilo), fases (fase_id PK, fase), parametros (parametro_id PK, parametro, tipo, global), registros (registro_id PK, competencia_id FK, fecha, id_nadador FK, distancia_id FK, estilo_id FK, fase_id FK, parametro_id FK, segmento, valor). Create TypeScript models compatible with the existing schema, implement helper functions for database queries, develop automatic calculation utilities, and set up test API endpoints.",
+        "testStrategy": "Verify TypeScript models match the existing database schema, test helper functions return correct data, validate automatic calculations produce accurate results, and ensure test API endpoints work properly with the existing database.",
         "subtasks": [
+          {
+            "id": 3,
+            "title": "Set Up Database Migrations",
+            "description": "Configure database migrations to manage schema changes systematically.",
+            "status": "done",
+            "dependencies": [
+              2
+            ],
+            "details": "Use Supabase CLI to generate migration files that capture the current schema state, facilitating version control and future schema modifications.",
+            "testStrategy": "Run migration commands to ensure they apply the schema changes correctly without errors."
+          },
+          {
+            "id": 6,
+            "title": "Optimize Database Performance",
+            "description": "Enhance database performance by creating indexes on frequently queried columns.",
+            "status": "done",
+            "dependencies": [
+              2
+            ],
+            "details": "Identify columns that are commonly used in queries and create appropriate indexes to improve query performance.",
+            "testStrategy": "Analyze query execution plans before and after indexing to measure performance improvements."
+          },
+          {
+            "id": 7,
+            "title": "Implement Row-Level Security (RLS)",
+            "description": "Configure RLS policies to control access to data at the row level.",
+            "status": "done",
+            "dependencies": [
+              2
+            ],
+            "details": "Define and apply RLS policies to ensure that users can only access data they are authorized to view or modify.",
+            "testStrategy": "Test access controls by attempting to access data with different user roles and verifying that permissions are enforced correctly."
+          },
+          {
+            "id": 8,
+            "title": "Document Database Schema and Processes",
+            "description": "Create comprehensive documentation for the database schema and related processes.",
+            "status": "done",
+            "dependencies": [
+              1,
+              3,
+              4,
+              7
+            ],
+            "details": "Document the schema design, migration procedures, seeding processes, and security policies to facilitate future maintenance and onboarding.",
+            "testStrategy": "Review the documentation for accuracy, completeness, and clarity to ensure it serves as a reliable reference."
+          },
+          {
+            "id": 9,
+            "title": "Create TypeScript Models for Database Schema",
+            "description": "Develop TypeScript interfaces and types that match the existing Phoenixdb database schema.",
+            "status": "done",
+            "dependencies": [
+              2
+            ],
+            "details": "Create TypeScript models for all tables: Nadador, Competencia, Distancia, Estilo, Fase, Parametro, and Registro. Include proper typing for all columns, foreign key relationships, and optional fields.",
+            "testStrategy": "Verify that TypeScript models accurately reflect the database schema structure and provide proper type safety for database operations."
+          },
+          {
+            "id": 10,
+            "title": "Implement Database Helper Functions",
+            "description": "Create utility functions for common database queries and operations.",
+            "status": "done",
+            "dependencies": [
+              9
+            ],
+            "details": "Develop helper functions for CRUD operations on each table, including functions for fetching swimmers, competitions, parameters, and records with proper joins and filtering capabilities.",
+            "testStrategy": "Test each helper function to ensure it returns correct data and handles edge cases properly."
+          },
+          {
+            "id": 11,
+            "title": "Develop Automatic Calculation Utilities",
+            "description": "Create utilities for automatic calculation of swimming performance metrics.",
+            "status": "done",
+            "dependencies": [
+              9,
+              10
+            ],
+            "details": "Implement calculation functions for the 6 automatic parameters based on manual measurements, including stroke rate, distance per stroke, and other performance metrics.",
+            "testStrategy": "Validate calculation accuracy by comparing results with known expected values and testing with various input scenarios."
+          },
+          {
+            "id": 12,
+            "title": "Set Up Test API Endpoints",
+            "description": "Create API endpoints for testing database integration and calculations.",
+            "status": "done",
+            "dependencies": [
+              10,
+              11
+            ],
+            "details": "Develop test API routes that demonstrate database connectivity, data retrieval, and automatic calculations using the existing Phoenixdb data.",
+            "testStrategy": "Test API endpoints to ensure they properly connect to the database, return expected data formats, and perform calculations correctly."
+          },
           {
             "id": 1,
             "title": "Design Database Schema",
             "description": "Define the structure of the database by identifying tables, columns, data types, and relationships.",
             "dependencies": [],
             "details": "Create a detailed schema diagram outlining tables such as 'nadadores', 'competencias', 'distancias', 'estilos', 'fases', 'parametros', and 'registros', including their respective columns and relationships.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Review the schema diagram for completeness and correctness, ensuring all necessary tables and relationships are accurately represented."
           },
           {
@@ -183,19 +276,8 @@
               1
             ],
             "details": "Utilize Supabase's SQL editor to execute scripts that create the tables and establish foreign key relationships as per the designed schema.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify the successful creation of tables and relationships by inspecting the database schema in the Supabase dashboard."
-          },
-          {
-            "id": 3,
-            "title": "Set Up Database Migrations",
-            "description": "Configure database migrations to manage schema changes systematically.",
-            "dependencies": [
-              2
-            ],
-            "details": "Use Supabase CLI to generate migration files that capture the current schema state, facilitating version control and future schema modifications.",
-            "status": "pending",
-            "testStrategy": "Run migration commands to ensure they apply the schema changes correctly without errors."
           },
           {
             "id": 4,
@@ -205,7 +287,7 @@
               2
             ],
             "details": "Write SQL insert statements for tables like 'distancias', 'estilos', 'fases', and 'parametros' to include predefined values.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Execute the seed scripts and confirm that the tables are populated with the correct initial data."
           },
           {
@@ -216,44 +298,8 @@
               4
             ],
             "details": "Place the seed scripts in the 'supabase/seed.sql' file to ensure they run automatically during database initialization.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Reset the database and verify that the seed data is inserted correctly during the initialization process."
-          },
-          {
-            "id": 6,
-            "title": "Optimize Database Performance",
-            "description": "Enhance database performance by creating indexes on frequently queried columns.",
-            "dependencies": [
-              2
-            ],
-            "details": "Identify columns that are commonly used in queries and create appropriate indexes to improve query performance.",
-            "status": "pending",
-            "testStrategy": "Analyze query execution plans before and after indexing to measure performance improvements."
-          },
-          {
-            "id": 7,
-            "title": "Implement Row-Level Security (RLS)",
-            "description": "Configure RLS policies to control access to data at the row level.",
-            "dependencies": [
-              2
-            ],
-            "details": "Define and apply RLS policies to ensure that users can only access data they are authorized to view or modify.",
-            "status": "pending",
-            "testStrategy": "Test access controls by attempting to access data with different user roles and verifying that permissions are enforced correctly."
-          },
-          {
-            "id": 8,
-            "title": "Document Database Schema and Processes",
-            "description": "Create comprehensive documentation for the database schema and related processes.",
-            "dependencies": [
-              1,
-              3,
-              4,
-              7
-            ],
-            "details": "Document the schema design, migration procedures, seeding processes, and security policies to facilitate future maintenance and onboarding.",
-            "status": "pending",
-            "testStrategy": "Review the documentation for accuracy, completeness, and clarity to ensure it serves as a reliable reference."
           }
         ]
       },
@@ -267,7 +313,7 @@
         "dependencies": [
           3
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -280,21 +326,66 @@
         "dependencies": [
           4
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
         "id": 7,
         "title": "Create Layout Components and Navigation",
         "description": "Build the main application layout with header, sidebar, and navigation components",
-        "details": "Create app/layout.tsx as root layout with Phoenix theme provider, dark mode toggle, and responsive structure. Build components/layout/Header.tsx with navigation menu, app title with Phoenix gradient, user actions, and mobile hamburger menu. Create components/layout/Sidebar.tsx with collapsible navigation, filter panels, and responsive behavior. Implement components/layout/Footer.tsx with app info and links. Use Next.js App Router for navigation with proper loading states and error boundaries.",
-        "testStrategy": "Test navigation between all routes, verify responsive behavior on mobile/tablet/desktop, validate dark mode toggle works across all components, and ensure proper loading states during navigation.",
-        "priority": "medium",
+        "status": "done",
         "dependencies": [
           5
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "medium",
+        "details": "Create app/layout.tsx as root layout with Phoenix theme provider, dark mode toggle, and responsive structure. Build components/layout/Header.tsx with navigation menu, app title with Phoenix gradient, user actions, and mobile hamburger menu. Create components/layout/Footer.tsx with app info and links. Implement components/layout/MainLayout.tsx with flexible layout system. Use Next.js App Router for navigation with proper loading states and error boundaries.",
+        "testStrategy": "Test navigation between all routes, verify responsive behavior on mobile/tablet/desktop, validate dark mode toggle works across all components, ensure proper loading states during navigation, and verify SEO optimization and PWA functionality.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Root Layout Setup with Phoenix Theme Provider",
+            "description": "Create the root layout component with Phoenix theme provider integration, including dark mode support, global styles, and Next.js App Router configuration",
+            "status": "completed",
+            "dependencies": [],
+            "details": "Set up app/layout.tsx with Phoenix theme provider wrapper, configure theme tokens for light/dark modes, implement lib/context/ThemeContext.tsx for global state management, add global CSS variables and typography styles, integrate with Next.js metadata API for SEO optimization, ensure proper SSR hydration, and add PWA support with mobile-first design",
+            "testStrategy": "Verify theme switching works correctly, test SSR hydration, validate PWA functionality, and ensure SEO metadata is properly applied"
+          },
+          {
+            "id": 2,
+            "title": "Header Component with Navigation and Responsive Menu",
+            "description": "Build responsive header component with main navigation, mobile hamburger menu, theme toggle, and user authentication elements",
+            "status": "completed",
+            "dependencies": [
+              1
+            ],
+            "details": "Create components/layout/Header.tsx with Phoenix gradient logo, primary navigation menu for Dashboard/Ingreso/Análisis/Nadadores routes, responsive breakpoints using Phoenix design tokens, mobile hamburger menu with smooth slide-out animations, integrated theme switcher with localStorage persistence, tooltips and active states, sticky navigation with backdrop blur, and complete ARIA accessibility attributes",
+            "testStrategy": "Test responsive behavior across devices, verify mobile hamburger menu animations, validate theme toggle persistence, and ensure navigation active states work correctly"
+          },
+          {
+            "id": 3,
+            "title": "Footer Component with Corporate Information",
+            "description": "Develop modern footer component with organized links, social media, and corporate information using Phoenix design system",
+            "status": "completed",
+            "dependencies": [
+              1
+            ],
+            "details": "Build components/layout/Footer.tsx with organized link categories (Producto, Recursos, Empresa), social media integration, corporate information and badges, version status indicators, responsive design for mobile devices, and consistent Phoenix styling with gradients and hover effects",
+            "testStrategy": "Verify footer links work correctly, test responsive layout on mobile devices, and validate social media integration"
+          },
+          {
+            "id": 4,
+            "title": "MainLayout Integration and Landing Page",
+            "description": "Create flexible MainLayout system and update landing page with Phoenix design integration",
+            "status": "completed",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Build components/layout/MainLayout.tsx with flexible layout system supporting multiple specialized layouts (Auth, Dashboard, Analytics), integrate header/footer/main structure with responsive design, create placeholder for future sidebar implementation, update app/page.tsx with modern landing page featuring hero section with Phoenix CTAs, feature cards with SVG icons, animated statistics section, and conversion-optimized final CTA",
+            "testStrategy": "Test layout flexibility across different page types, verify landing page responsiveness and animations, validate CTA functionality, and ensure proper routing integration with Next.js App Router"
+          }
+        ]
       },
       {
         "id": 8,
@@ -306,7 +397,7 @@
         "dependencies": [
           6
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -320,7 +411,7 @@
           4,
           6
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -328,7 +419,7 @@
             "description": "Initialize the project directory and configure necessary dependencies.",
             "dependencies": [],
             "details": "Create the project directory with the following structure: api/, calculations/, and utils/. Configure a virtual environment and install dependencies listed in requirements.txt, including Starlette, pandas, numpy, supabase-py, and python-multipart.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify that all dependencies are installed correctly and the project structure is set up as specified."
           },
           {
@@ -339,7 +430,7 @@
               1
             ],
             "details": "In the api/ directory, create ingest.py using the Starlette framework. Implement functionality to receive data, validate inputs, and calculate metrics automatically upon ingestion.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test the function by sending sample data and verifying that metrics are calculated and stored correctly."
           },
           {
@@ -350,7 +441,7 @@
               1
             ],
             "details": "In the api/ directory, create metrics.py using the Starlette framework. Implement functionality to query stored data with various filters and return the results.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test the function by querying data with different filters and verifying the accuracy of the returned results."
           },
           {
@@ -361,7 +452,7 @@
               1
             ],
             "details": "In the calculations/ directory, create swimming_metrics.py containing the SwimmingMetricsCalculator class. Implement all six automatic metric formulas: V1, V2, V promedio, DIST x BRZ, DIST sin F, and F promedio.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test each metric calculation method with predefined inputs and expected outputs to ensure correctness."
           },
           {
@@ -372,7 +463,7 @@
               1
             ],
             "details": "In the utils/ directory, create supabase_client.py to handle database operations using the supabase-py library. Implement functions for connecting to the database, inserting data, and querying data.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test database connection and operations by performing CRUD operations and verifying the results."
           },
           {
@@ -383,7 +474,7 @@
               1
             ],
             "details": "In the utils/ directory, create data_validation.py to validate incoming data for the serverless functions. Implement functions to check data types, required fields, and value ranges.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test validation functions with various input scenarios to ensure they correctly identify valid and invalid data."
           },
           {
@@ -394,7 +485,7 @@
               1
             ],
             "details": "In the utils/ directory, create csv_processor.py to handle CSV file operations. Implement functions to read, parse, and validate CSV files for data ingestion.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test CSV processing functions with sample files to ensure correct parsing and validation of data."
           }
         ]
@@ -402,16 +493,62 @@
       {
         "id": 10,
         "title": "Create Data Validation System",
-        "description": "Implement comprehensive data validation for both frontend and backend",
-        "details": "Create lib/utils/validators.ts with Zod schemas for MetricFormSchema including all validation rules (time ranges 5.00-180.00s, stroke counts 1-100, underwater distances 0.00-15.00m, consistency checks T_TOTAL ≥ T25_1 + T25_2). Implement api/utils/data_validation.py with DataValidator class for backend validation including single metric validation, consistency checks, and detailed error messages. Create validation utilities for CSV data format checking and real-time form validation feedback.",
-        "testStrategy": "Test all validation rules with edge cases, verify frontend validation provides immediate feedback, ensure backend validation catches all invalid data, and validate error messages are user-friendly.",
-        "priority": "high",
+        "description": "Implement comprehensive data validation for both frontend and backend - COMPLETED with advanced features and optimizations",
+        "status": "done",
         "dependencies": [
           6,
           9
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "high",
+        "details": "✅ COMPLETED: Comprehensive data validation system implemented with advanced features. Frontend includes lib/utils/validators.ts with complete Zod schemas for MetricFormSchema, CSV validation, swimmers, and competitions with real-time validation and Spanish error messages. Backend features optimized api/utils/data_validation.py with stricter validation rules (10% tolerance), velocity coherence checks, and enhanced stroke/time consistency validation. Added custom React hooks in lib/hooks/useValidation.ts for real-time form validation with React Hook Form integration, batch CSV validation support, and performance optimizations using useMemo and useCallback. System includes validation for time ranges (5.00-180.00s), stroke counts (1-100), underwater distances (0.00-15.00m), consistency checks (T_TOTAL ≥ T25_1 + T25_2), velocity difference detection, and contextual error messaging for improved UX.",
+        "testStrategy": "✅ COMPLETED: All validation rules tested with edge cases, frontend validation provides immediate feedback, backend validation catches all invalid data with stricter 10% tolerance rules, error messages are user-friendly and contextual in Spanish, velocity coherence validation working, and performance optimized for real-time validation.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Frontend Zod Validation Schemas",
+            "description": "Implement lib/utils/validators.ts with comprehensive Zod schemas",
+            "status": "completed",
+            "dependencies": [],
+            "details": "✅ Created complete Zod schemas for MetricFormSchema, CSV validation, swimmers, and competitions with real-time validation and Spanish error messages",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Backend Data Validation",
+            "description": "Create optimized api/utils/data_validation.py with DataValidator class",
+            "status": "completed",
+            "dependencies": [],
+            "details": "✅ Enhanced backend validation with stricter rules (10% tolerance), velocity coherence checks, and improved stroke/time consistency validation",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Create Custom React Validation Hooks",
+            "description": "Implement lib/hooks/useValidation.ts with custom hooks for form validation",
+            "status": "completed",
+            "dependencies": [],
+            "details": "✅ Created custom React hooks for real-time validation with React Hook Form integration, batch CSV validation, and performance optimizations",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement Advanced Validation Rules",
+            "description": "Add velocity coherence validation and stricter consistency checks",
+            "status": "completed",
+            "dependencies": [],
+            "details": "✅ Implemented advanced validation including velocity difference detection, stricter tolerance rules, and enhanced underwater distance validation",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Optimize Performance and UX",
+            "description": "Implement performance optimizations and improve user experience",
+            "status": "completed",
+            "dependencies": [],
+            "details": "✅ Added useMemo and useCallback optimizations, contextual Spanish error messages, and improved real-time validation feedback",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 11,
@@ -761,7 +898,7 @@
     ],
     "metadata": {
       "created": "2025-06-24T05:43:45.977Z",
-      "updated": "2025-06-24T06:45:17.168Z",
+      "updated": "2025-06-24T20:02:46.670Z",
       "description": "Tasks for master context"
     }
   }

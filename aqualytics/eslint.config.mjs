@@ -11,6 +11,21 @@ const compat = new FlatCompat({
 
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    rules: {
+      // Ignorar parámetros que empiecen con _ (funciones TODO)
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_'
+        }
+      ],
+      // Permitir interfaces vacías temporalmente (para API types)
+      '@typescript-eslint/no-empty-object-type': 'off'
+    }
+  }
 ];
 
 export default eslintConfig;

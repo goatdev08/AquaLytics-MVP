@@ -2,10 +2,32 @@
 
 /* Phoenix Theme Variables */
 :root {
-  /* Phoenix Color Palette */
+  /* Phoenix Color Palette - Expanded */
   --phoenix-red: #DC2626;
   --phoenix-orange: #EA580C;
   --phoenix-yellow: #D97706;
+  --phoenix-amber: #F59E0B;
+  --phoenix-rose: #E11D48;
+  --phoenix-crimson: #B91C1C;
+  --phoenix-coral: #F97316;
+  --phoenix-gold: #EAB308;
+  --phoenix-copper: #CD7C2F;
+  --phoenix-ember: #DC2626;
+  
+  /* Phoenix Variations */
+  --phoenix-red-light: #FCA5A5;
+  --phoenix-red-dark: #991B1B;
+  --phoenix-orange-light: #FDBA74;
+  --phoenix-orange-dark: #C2410C;
+  --phoenix-yellow-light: #FDE68A;
+  --phoenix-yellow-dark: #92400E;
+  
+  /* Phoenix Accent Colors */
+  --phoenix-flame: #FF4500;
+  --phoenix-sunset: #FF6B35;
+  --phoenix-dawn: #FFD60A;
+  --phoenix-warm-gray: #78716C;
+  --phoenix-ash: #6B7280;
   
   /* Light Mode Colors */
   --background: #ffffff;
@@ -23,9 +45,11 @@
   --border: #e2e8f0;
   --input: #ffffff;
   --ring: var(--phoenix-red);
+  --destructive: var(--phoenix-crimson);
+  --destructive-foreground: #ffffff;
 }
 
-/* Dark Mode Colors */
+/* Dark Mode Colors - Sistema */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -43,7 +67,51 @@
     --border: #334155;
     --input: #1a1a1a;
     --ring: #EF4444;
+    --destructive: #DC2626;
+    --destructive-foreground: #ffffff;
   }
+}
+
+/* Dark Mode Colors - Controlado por clase */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --card: #1a1a1a;
+  --card-foreground: #ededed;
+  --primary: #EF4444;
+  --primary-foreground: #ffffff;
+  --secondary: #FB923C;
+  --secondary-foreground: #ffffff;
+  --accent: #FBBF24;
+  --accent-foreground: #000000;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --border: #334155;
+  --input: #1a1a1a;
+  --ring: #EF4444;
+  --destructive: #DC2626;
+  --destructive-foreground: #ffffff;
+}
+
+/* Light Mode Colors - Controlado por clase */
+.light {
+  --background: #ffffff;
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --primary: var(--phoenix-red);
+  --primary-foreground: #ffffff;
+  --secondary: var(--phoenix-orange);
+  --secondary-foreground: #ffffff;
+  --accent: var(--phoenix-yellow);
+  --accent-foreground: #ffffff;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --input: #ffffff;
+  --ring: var(--phoenix-red);
+  --destructive: var(--phoenix-crimson);
+  --destructive-foreground: #ffffff;
 }
 
 /* TailwindCSS v4 Theme Configuration */
@@ -64,16 +132,43 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   
-  /* Phoenix Specific Colors */
+  /* Phoenix Core Colors */
   --color-phoenix-red: var(--phoenix-red);
   --color-phoenix-orange: var(--phoenix-orange);
   --color-phoenix-yellow: var(--phoenix-yellow);
+  --color-phoenix-amber: var(--phoenix-amber);
+  --color-phoenix-rose: var(--phoenix-rose);
+  --color-phoenix-crimson: var(--phoenix-crimson);
+  --color-phoenix-coral: var(--phoenix-coral);
+  --color-phoenix-gold: var(--phoenix-gold);
+  --color-phoenix-copper: var(--phoenix-copper);
+  --color-phoenix-ember: var(--phoenix-ember);
+  
+  /* Phoenix Variations */
+  --color-phoenix-red-light: var(--phoenix-red-light);
+  --color-phoenix-red-dark: var(--phoenix-red-dark);
+  --color-phoenix-orange-light: var(--phoenix-orange-light);
+  --color-phoenix-orange-dark: var(--phoenix-orange-dark);
+  --color-phoenix-yellow-light: var(--phoenix-yellow-light);
+  --color-phoenix-yellow-dark: var(--phoenix-yellow-dark);
+  
+  /* Phoenix Accent Colors */
+  --color-phoenix-flame: var(--phoenix-flame);
+  --color-phoenix-sunset: var(--phoenix-sunset);
+  --color-phoenix-dawn: var(--phoenix-dawn);
+  --color-phoenix-warm-gray: var(--phoenix-warm-gray);
+  --color-phoenix-ash: var(--phoenix-ash);
   
   /* Phoenix Gradients */
   --color-phoenix-gradient-primary: linear-gradient(135deg, var(--phoenix-red) 0%, var(--phoenix-orange) 50%, var(--phoenix-yellow) 100%);
   --color-phoenix-gradient-warm: linear-gradient(45deg, var(--phoenix-orange) 0%, var(--phoenix-yellow) 100%);
   --color-phoenix-gradient-fire: linear-gradient(180deg, var(--phoenix-red) 0%, var(--phoenix-orange) 100%);
+  --color-phoenix-gradient-sunset: linear-gradient(90deg, var(--phoenix-sunset) 0%, var(--phoenix-amber) 50%, var(--phoenix-gold) 100%);
+  --color-phoenix-gradient-ember: linear-gradient(45deg, var(--phoenix-ember) 0%, var(--phoenix-coral) 50%, var(--phoenix-dawn) 100%);
+  --color-phoenix-gradient-rose: linear-gradient(135deg, var(--phoenix-rose) 0%, var(--phoenix-coral) 100%);
   
   /* Responsive Breakpoints */
   --breakpoint-xs: 320px;
@@ -97,6 +192,8 @@
   --shadow-phoenix-lg: 0 10px 15px -3px rgba(220, 38, 38, 0.15), 0 4px 6px -2px rgba(220, 38, 38, 0.1);
   --shadow-phoenix-xl: 0 20px 25px -5px rgba(220, 38, 38, 0.2), 0 10px 10px -5px rgba(220, 38, 38, 0.1);
   --shadow-glow: 0 0 20px rgba(220, 38, 38, 0.3);
+  --shadow-phoenix-warm: 0 4px 6px -1px rgba(234, 88, 12, 0.1), 0 2px 4px -1px rgba(234, 88, 12, 0.06);
+  --shadow-phoenix-gold: 0 4px 6px -1px rgba(217, 119, 6, 0.1), 0 2px 4px -1px rgba(217, 119, 6, 0.06);
 }
 
 /* Global Styles */
@@ -121,6 +218,18 @@ body {
   background: var(--color-phoenix-gradient-fire);
 }
 
+.phoenix-gradient-sunset {
+  background: var(--color-phoenix-gradient-sunset);
+}
+
+.phoenix-gradient-ember {
+  background: var(--color-phoenix-gradient-ember);
+}
+
+.phoenix-gradient-rose {
+  background: var(--color-phoenix-gradient-rose);
+}
+
 .phoenix-text-gradient {
   background: var(--color-phoenix-gradient-primary);
   -webkit-background-clip: text;
@@ -138,6 +247,14 @@ body {
 
 .phoenix-shadow-xl {
   box-shadow: var(--shadow-phoenix-xl);
+}
+
+.phoenix-shadow-warm {
+  box-shadow: var(--shadow-phoenix-warm);
+}
+
+.phoenix-shadow-gold {
+  box-shadow: var(--shadow-phoenix-gold);
 }
 
 /* Enhanced Hover Effects */

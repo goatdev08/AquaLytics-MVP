@@ -1,0 +1,139 @@
+{
+	"meta": {
+		"generatedAt": "2025-06-24T09:26:39.944Z",
+		"tasksAnalyzed": 18,
+		"totalTasks": 25,
+		"analysisCount": 18,
+		"thresholdScore": 7,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 7,
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down the layout components creation into: 1) Root layout setup with Phoenix theme provider, 2) Header component with navigation and responsive menu, 3) Sidebar component with collapsible navigation, 4) Footer component and routing integration with error boundaries",
+			"reasoning": "Medium complexity due to multiple interconnected components requiring responsive design, theme integration, and Next.js App Router setup. Well-defined requirements make it manageable."
+		},
+		{
+			"taskId": 8,
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Divide state management implementation into: 1) Swimmers store with CRUD operations and caching, 2) Metrics store with calculations and filtering, 3) UI store for modal and theme states, 4) Store persistence and optimistic updates, 5) DevTools integration and error handling",
+			"reasoning": "High-medium complexity requiring deep understanding of Zustand patterns, TypeScript typing, persistence strategies, and optimistic updates with rollback mechanisms."
+		},
+		{
+			"taskId": 10,
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Structure validation system into: 1) Zod schema definitions for all data types, 2) Frontend form validation with real-time feedback, 3) Backend validation class with consistency checks, 4) CSV data format validation, 5) Error message system and user feedback, 6) Integration testing for validation pipeline",
+			"reasoning": "High complexity due to comprehensive validation requirements across frontend/backend, complex business rules for swimming metrics, and need for consistent error handling."
+		},
+		{
+			"taskId": 11,
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break swimmer management into: 1) SwimmerForm component with validation, 2) API routes for CRUD operations, 3) Custom hook for swimmer operations with caching, 4) Swimmer selection components and integration testing",
+			"reasoning": "Medium complexity with standard CRUD operations, but requires proper form handling, API integration, and optimistic updates with error rollback."
+		},
+		{
+			"taskId": 12,
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Organize reference data management into: 1) Competition form and API endpoints, 2) Reference data management (distances, strokes, phases) with seeding, 3) Admin interface and selection components integration",
+			"reasoning": "Medium-low complexity as it follows similar patterns to swimmer management but with simpler data structures and fewer business rules."
+		},
+		{
+			"taskId": 13,
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Structure metrics form into: 1) Form schema and validation setup, 2) Basic info section (swimmer, competition, date), 3) First segment metrics section, 4) Second segment metrics section, 5) Global metrics and consistency checking, 6) Form state persistence and submission handling",
+			"reasoning": "High complexity due to complex form with multiple sections, real-time validation, consistency checking between fields, and sophisticated user experience requirements."
+		},
+		{
+			"taskId": 14,
+			"complexityScore": 9,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Break CSV processing into: 1) File upload component with drag-and-drop, 2) File validation and preview functionality, 3) Next.js API proxy setup, 4) Python CSV processor with pandas, 5) Batch validation and processing, 6) Progress tracking and error reporting, 7) Rollback mechanism and integration testing",
+			"reasoning": "Very high complexity involving file handling, batch processing, cross-language integration (Next.js to Python), complex error handling, and transaction management."
+		},
+		{
+			"taskId": 15,
+			"complexityScore": 7,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Already has 6 well-structured subtasks covering: calculator implementation, pipeline integration, validation/error handling, performance optimization, monitoring/logging, and documentation",
+			"reasoning": "High-medium complexity with mathematical calculations, pipeline integration, and performance considerations. Current subtask breakdown is comprehensive and well-organized."
+		},
+		{
+			"taskId": 16,
+			"complexityScore": 7,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Already has 6 appropriate subtasks covering: project setup, individual chart components (MetricsChart, ProgressChart, ComparisonChart, RankingTable), and Phoenix theme configuration",
+			"reasoning": "High-medium complexity requiring Chart.js expertise, responsive design, theme integration, and multiple chart types. Current subtask structure is well-planned."
+		},
+		{
+			"taskId": 17,
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Organize filtering system into: 1) Filter UI components (date range, multi-selects, sliders), 2) Filter state management hook with URL synchronization, 3) Filter persistence and reset functionality, 4) Integration with data fetching and chart updates",
+			"reasoning": "Medium complexity with multiple filter types, state management, URL synchronization, and integration with existing components."
+		},
+		{
+			"taskId": 18,
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Structure dashboard into: 1) Metrics cards and summary statistics, 2) Main visualization area with charts, 3) Quick actions and real-time updates integration",
+			"reasoning": "Medium-low complexity as it primarily integrates existing components, but requires proper data orchestration and real-time updates."
+		},
+		{
+			"taskId": 19,
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Organize data entry pages into: 1) Main selection page with routing, 2) Manual entry page integration, 3) CSV upload page with processing status",
+			"reasoning": "Low-medium complexity as it mainly integrates existing form and upload components with proper navigation flow."
+		},
+		{
+			"taskId": 20,
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break analytics pages into: 1) Main analytics dashboard with filters, 2) Individual swimmer profile pages, 3) Multi-swimmer comparison interface, 4) Rankings page with sorting and filtering",
+			"reasoning": "Medium complexity requiring multiple page types, data visualization integration, and complex filtering/comparison logic."
+		},
+		{
+			"taskId": 21,
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Structure API routes into: 1) Swimmers API with CRUD operations, 2) Competitions and metrics API endpoints, 3) CSV upload proxy implementation, 4) Error handling and response formatting standardization",
+			"reasoning": "Medium-low complexity with standard API patterns, but requires proper error handling, validation, and integration with Python backend."
+		},
+		{
+			"taskId": 22,
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Organize custom hooks into: 1) Data fetching hooks (useSwimmers, useMetrics), 2) Chart data transformation hook, 3) Filter management hook, 4) Caching and optimistic updates implementation",
+			"reasoning": "Medium complexity requiring React hooks expertise, caching strategies, and proper TypeScript typing for reusable data management."
+		},
+		{
+			"taskId": 23,
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Structure performance optimizations into: 1) Next.js optimizations (dynamic imports, images, fonts), 2) React optimizations (memo, useMemo, useCallback), 3) Caching strategies implementation, 4) Bundle analysis and code splitting, 5) Loading states and progressive enhancement",
+			"reasoning": "High-medium complexity requiring deep Next.js and React performance knowledge, bundle optimization, and measurement tools."
+		},
+		{
+			"taskId": 24,
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Organize error handling into: 1) Error boundary components and error pages, 2) Toast notifications and user feedback systems, 3) Loading states and offline detection, 4) Retry mechanisms and error logging",
+			"reasoning": "Medium-low complexity with established patterns, but requires comprehensive coverage across all application areas."
+		},
+		{
+			"taskId": 25,
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Structure final testing into: 1) End-to-end user flow testing, 2) Performance benchmark validation, 3) Responsive design and cross-browser testing, 4) Data accuracy validation with real swimming data, 5) Database integrity and error handling verification, 6) Deployment preparation and documentation",
+			"reasoning": "High complexity requiring comprehensive testing across all application aspects, performance validation, and production readiness verification."
+		}
+	]
+}
