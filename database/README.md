@@ -17,8 +17,9 @@ database/
 ## 📝 Migration Files
 
 ### 001_initial_schema.sql
+
 - **Propósito**: Define la estructura completa de la base de datos
-- **Incluye**: 
+- **Incluye**:
   - Todas las tablas (nadadores, competencias, distancias, estilos, fases, parametros, registros)
   - Índices para optimización de consultas
   - Comentarios de documentación
@@ -27,6 +28,7 @@ database/
   - Configuración básica de seguridad (RLS)
 
 ### 002_seed_reference_data.sql
+
 - **Propósito**: Inserta datos de referencia necesarios para el funcionamiento
 - **Incluye**:
   - Distancias estándar (25m, 50m, 100m, 200m, 400m, 800m, 1500m)
@@ -42,6 +44,7 @@ database/
 1. Accede al Dashboard de Supabase
 2. Ve a **SQL Editor**
 3. Ejecuta las migraciones en orden:
+
    ```sql
    -- Paso 1: Ejecutar 001_initial_schema.sql
    -- Paso 2: Ejecutar 002_seed_reference_data.sql
@@ -167,4 +170,4 @@ Para crear nuevas migraciones:
 
 - `/aqualytics/lib/types/database.ts` - Tipos TypeScript correspondientes
 - `/aqualytics/lib/supabase.ts` - Cliente y helpers de base de datos
-- `/aqualytics/docs/database-schema.md` - Documentación detallada del schema 
+- `/aqualytics/docs/database-schema.md` - Documentación detallada del schema

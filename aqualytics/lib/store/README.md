@@ -17,7 +17,8 @@ Este directorio contiene todos los stores de gestión de estado de la aplicació
 
 **Archivo**: `swimmers-store.ts`
 
-### Funcionalidades principales:
+### Funcionalidades principales
+
 - **CRUD completo** de nadadores
 - **Cache inteligente** con expiración automática
 - **Filtros avanzados** por edad, peso, registros
@@ -25,7 +26,8 @@ Este directorio contiene todos los stores de gestión de estado de la aplicació
 - **Optimistic updates** para mejor UX
 - **Paginación** automática
 
-### Hooks disponibles:
+### Hooks disponibles
+
 ```typescript
 // Store principal
 useSwimmersStore()
@@ -40,7 +42,8 @@ useSelectedSwimmer() // swimmer, select, clear
 useSwimmersList() // swimmers, stats, fetch, search, filter
 ```
 
-### Ejemplo de uso:
+### Ejemplo de uso
+
 ```typescript
 import { useSwimmerOperations, useSwimmersList } from '@/lib/store'
 
@@ -68,7 +71,8 @@ function SwimmerComponent() {
 
 **Archivo**: `metrics-store.ts`
 
-### Funcionalidades principales:
+### Funcionalidades principales
+
 - **Cálculos automáticos** de métricas derivadas
 - **Validaciones** en tiempo real de datos
 - **Análisis de rendimiento** y comparaciones
@@ -76,7 +80,8 @@ function SwimmerComponent() {
 - **Exportación** de datos en múltiples formatos
 - **Cache de cálculos** para optimización
 
-### Hooks disponibles:
+### Hooks disponibles
+
 ```typescript
 // Store principal
 useMetricsStore()
@@ -91,14 +96,16 @@ useMetricsAnalysis() // performance, ranking, progress
 useMetricsData() // records, parameters, filter, stats
 ```
 
-### Cálculos automáticos incluidos:
+### Cálculos automáticos incluidos
+
 - **V1, V2**: Velocidades por segmento (25m/tiempo)
 - **V promedio**: Velocidad total (50m/tiempo_total)
 - **DIST x BRZ**: Distancia por brazada (50m/brazadas_total)
 - **DIST sin F**: Distancia sin flecha (50m - flechas)
 - **F promedio**: Promedio de flechas ((F1 + F2) / 2)
 
-### Ejemplo de uso:
+### Ejemplo de uso
+
 ```typescript
 import { useMetricsOperations, useMetricsData } from '@/lib/store'
 
@@ -129,7 +136,8 @@ function MetricsForm() {
 
 **Archivo**: `ui-store.ts`
 
-### Funcionalidades principales:
+### Funcionalidades principales
+
 - **Gestión de modales** con contexto
 - **Estados de carga** granulares
 - **Sistema de notificaciones** con auto-expire
@@ -137,7 +145,8 @@ function MetricsForm() {
 - **Preferencias de usuario** (tema, accesibilidad)
 - **Estados de formularios** con validación
 
-### Hooks disponibles:
+### Hooks disponibles
+
 ```typescript
 // Store principal
 useUIStore()
@@ -161,7 +170,8 @@ useUIPreferences() // theme, accessibility, density
 useFormStates() // dirty, errors, validation
 ```
 
-### Ejemplo de uso:
+### Ejemplo de uso
+
 ```typescript
 import { useModals, useNotifications, useLoadingStates } from '@/lib/store'
 
@@ -201,7 +211,8 @@ function MyComponent() {
 
 ## 🔧 Configuración y Persistencia
 
-### Cache y Expiración:
+### Cache y Expiración
+
 ```typescript
 CACHE_EXPIRY: {
   SWIMMERS: 5 * 60 * 1000, // 5 minutos
@@ -210,7 +221,8 @@ CACHE_EXPIRY: {
 }
 ```
 
-### Storage:
+### Storage
+
 ```typescript
 STORAGE: {
   SWIMMERS: 'sessionStorage', // Datos de sesión
@@ -219,14 +231,16 @@ STORAGE: {
 }
 ```
 
-### DevTools:
+### DevTools
+
 - Habilitado automáticamente en **desarrollo**
 - Logging de cambios de estado
 - Nombres descriptivos para debugging
 
 ## 🚀 Mejores Prácticas
 
-### 1. **Importaciones**:
+### 1. **Importaciones**
+
 ```typescript
 // ✅ Usar el index para importaciones limpias
 import { useSwimmersList, useMetricsOperations } from '@/lib/store'
@@ -235,7 +249,8 @@ import { useSwimmersList, useMetricsOperations } from '@/lib/store'
 import { useSwimmersStore } from '@/lib/store/swimmers-store'
 ```
 
-### 2. **Manejo de errores**:
+### 2. **Manejo de errores**
+
 ```typescript
 const { createSwimmer, error, clearError } = useSwimmerOperations()
 
@@ -250,7 +265,8 @@ if (error) {
 }
 ```
 
-### 3. **Optimistic Updates**:
+### 3. **Optimistic Updates**
+
 ```typescript
 // Los stores manejan automáticamente optimistic updates
 // Solo maneja los errores para rollback
@@ -264,7 +280,8 @@ const handleUpdate = async (id, data) => {
 }
 ```
 
-### 4. **Cache**:
+### 4. **Cache**
+
 ```typescript
 // Verificar cache antes de hacer fetch
 if (!isCacheValid()) {
@@ -277,10 +294,12 @@ await fetchSwimmers({ force: true })
 
 ## 🐛 Debug y Desarrollo
 
-### Logging en desarrollo:
+### Logging en desarrollo
+
 Los stores automáticamente logean cambios de estado en la consola durante desarrollo.
 
-### Debug hooks (solo desarrollo):
+### Debug hooks (solo desarrollo)
+
 ```typescript
 import { useStoreDebug } from '@/lib/store'
 
@@ -308,4 +327,4 @@ function DebugComponent() {
 
 - [Zustand Documentation](https://github.com/pmndrs/zustand)
 - [Zustand Best Practices](https://github.com/pmndrs/zustand/wiki/Recipes)
-- [TypeScript with Zustand](https://github.com/pmndrs/zustand#typescript) 
+- [TypeScript with Zustand](https://github.com/pmndrs/zustand#typescript)

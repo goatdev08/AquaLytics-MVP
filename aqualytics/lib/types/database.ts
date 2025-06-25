@@ -394,7 +394,7 @@ export interface ResultadoBusqueda<T> {
 
 export const DISTANCIAS_DISPONIBLES = [25, 50, 100, 200, 400, 800, 1500] as const
 export const ESTILOS_DISPONIBLES = ['Crol', 'Dorso', 'Pecho', 'Mariposa', 'Combinado'] as const
-export const FASES_DISPONIBLES = ['Entrenamiento', 'Competencia', 'Prueba'] as const
+export const FASES_DISPONIBLES = ['PRELIMINAR', 'SEMIFINAL', 'FINAL'] as const
 export const TIPOS_PARAMETRO = ['M', 'A'] as const
 
 export type DistanciaValida = typeof DISTANCIAS_DISPONIBLES[number]
@@ -475,5 +475,7 @@ export function esEstiloValido(estilo: string): estilo is EstiloValido {
 // ===== EXPORT TYPES PARA SUPABASE CLIENT =====
 
 export type SupabaseDatabase = Database
-export type SupabaseSchema = Database['public']
-export type SupabaseTables = SupabaseSchema['Tables'] 
+  export type SupabaseSchema = Database['public']
+  export type SupabaseTables = SupabaseSchema['Tables']
+
+ 

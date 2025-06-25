@@ -7,6 +7,7 @@ La base de datos **Phoenixdb** en Supabase contiene la estructura completa para 
 ## Estructura de Tablas
 
 ### 1. Nadadores (`nadadores`)
+
 Almacena información básica de los atletas.
 
 | Campo | Tipo | Descripción | Constraints |
@@ -17,6 +18,7 @@ Almacena información básica de los atletas.
 | `peso` | `smallint` | Peso del nadador en kg | OPTIONAL |
 
 ### 2. Competencias (`competencias`)
+
 Información sobre eventos y competencias.
 
 | Campo | Tipo | Descripción | Constraints |
@@ -26,6 +28,7 @@ Información sobre eventos y competencias.
 | `periodo` | `daterange` | Rango de fechas de la competencia | OPTIONAL |
 
 ### 3. Distancias (`distancias`)
+
 Distancias estándar de natación.
 
 | Campo | Tipo | Descripción | Constraints |
@@ -36,6 +39,7 @@ Distancias estándar de natación.
 **Valores existentes:** 25, 50, 100, 200, 400, 800, 1500 metros
 
 ### 4. Estilos (`estilos`)
+
 Estilos de natación reconocidos.
 
 | Campo | Tipo | Descripción | Constraints |
@@ -44,6 +48,7 @@ Estilos de natación reconocidos.
 | `estilo` | `varchar` | Nombre del estilo | NOT NULL, UNIQUE |
 
 **Valores existentes:**
+
 - Crol
 - Dorso  
 - Pecho
@@ -51,6 +56,7 @@ Estilos de natación reconocidos.
 - Combinado
 
 ### 5. Fases (`fases`)
+
 Fases de competencia.
 
 | Campo | Tipo | Descripción | Constraints |
@@ -59,11 +65,13 @@ Fases de competencia.
 | `fase` | `varchar` | Nombre de la fase | NOT NULL, UNIQUE |
 
 **Valores existentes:**
+
 - PRELIMINAR
 - SEMIFINAL
 - FINAL
 
 ### 6. Parámetros (`parametros`)
+
 Métricas de rendimiento que se pueden medir.
 
 | Campo | Tipo | Descripción | Constraints |
@@ -74,6 +82,7 @@ Métricas de rendimiento que se pueden medir.
 | `global` | `boolean` | Si es una métrica global o por segmento | DEFAULT false |
 
 #### Parámetros Manuales (tipo = 'M')
+
 | ID | Parámetro | Descripción | Global |
 |----|-----------|-------------|--------|
 | 1 | T15 (1) | Tiempo primer segmento 15m | No |
@@ -87,6 +96,7 @@ Métricas de rendimiento que se pueden medir.
 | 15 | F2 | Frecuencia segundo segmento | No |
 
 #### Parámetros Automáticos (tipo = 'A')
+
 | ID | Parámetro | Descripción | Fórmula | Global |
 |----|-----------|-------------|---------|--------|
 | 3 | V1 | Velocidad primer segmento | distancia/tiempo | No |
@@ -98,6 +108,7 @@ Métricas de rendimiento que se pueden medir.
 | 16 | F promedio | Frecuencia promedio | promedio(frecuencias) | Sí |
 
 ### 7. Registros (`registros`)
+
 Tabla principal que almacena todas las mediciones.
 
 | Campo | Tipo | Descripción | Constraints |
@@ -139,6 +150,7 @@ CREATE INDEX idx_registros_busqueda ON registros(id_nadador, distancia_id, estil
 ## Patrones de Consulta Comunes
 
 ### 1. Obtener rendimiento completo de un nadador
+
 ```sql
 SELECT r.*, n.nombre, c.competencia, d.distancia, e.estilo, f.fase, p.parametro, p.tipo
 FROM registros r
@@ -153,6 +165,7 @@ ORDER BY r.fecha DESC, r.parametro_id;
 ```
 
 ### 2. Comparar nadadores en misma competencia
+
 ```sql
 SELECT n.nombre, r.valor, p.parametro
 FROM registros r
@@ -167,6 +180,7 @@ ORDER BY r.id_nadador, r.parametro_id;
 ```
 
 ### 3. Obtener métricas automáticas para cálculo
+
 ```sql
 SELECT * FROM parametros WHERE tipo = 'A' ORDER BY parametro_id;
 ```
@@ -176,7 +190,7 @@ SELECT * FROM parametros WHERE tipo = 'A' ORDER BY parametro_id;
 1. **Segmentos**: Los parámetros pueden ser por segmento (1, 2) o globales (NULL)
 2. **Cálculos automáticos**: Los parámetros tipo 'A' se calculan basándose en parámetros tipo 'M'
 3. **Integridad referencial**: Todos los registros deben tener referencias válidas
-4. **Validaciones**: 
+4. **Validaciones**:
    - Distancias deben ser valores estándar
    - Tiempos deben ser positivos
    - Frecuencias deben ser > 0
@@ -208,4 +222,4 @@ La integración con Supabase utiliza estos tipos para garantizar la seguridad de
 2. **Índices adicionales**: Optimizar consultas de análisis temporal
 3. **Vistas materializadas**: Para consultas de análisis complejas
 4. **Triggers**: Para validaciones automáticas y cálculos en tiempo real
-5. **Particionado**: Para manejar grandes volúmenes de datos históricos 
+5. **Particionado**: Para manejar grandes volúmenes de datos históricos
