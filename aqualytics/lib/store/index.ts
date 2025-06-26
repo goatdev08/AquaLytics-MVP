@@ -6,31 +6,13 @@
 // ===== EXPORTACIONES DE STORES =====
 
 // Swimmers Store
-export {
-  useSwimmersStore,
-  useSwimmerOperations,
-  useSelectedSwimmer,
-  useSwimmersList,
-} from './swimmers-store'
+export { useSwimmersStore } from './swimmers-store'
 
 // Metrics Store  
-export {
-  useMetricsStore,
-  useMetricsOperations,
-  useMetricsAnalysis,
-  useMetricsData,
-} from './metrics-store'
+export { useMetricsStore } from './metrics-store'
 
 // UI Store
-export {
-  useUIStore,
-  useModals,
-  useLoadingStates,
-  useNavigation,
-  useNotifications,
-  useUIPreferences,
-  useFormStates,
-  } from './ui-store'
+export { useUIStore } from './ui-store'
 
 // ===== CONFIGURACIÓN DE STORES =====
 

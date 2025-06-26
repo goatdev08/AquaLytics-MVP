@@ -1,0 +1,173 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Errores Comunes - AquaLytics
+
+## **1. Over-Engineering en State Management**
+
+### **Error:**
+Crear stores de Zustand con más de 500 líneas incluyendo métodos no implementados.
+
+### **Síntoma:**
+```typescript
+// metrics-store.ts con 736 líneas
+export const useMetricsStore = create<MetricsStore>((set, get) => ({
+  // ... 200 líneas de estado
+  analyzePerformance: () => { /* TODO */ },
+  generateRankings: () => { /* TODO */ },
+  // ... más TODOs
+}))
+```
+
+### **Solución:**
+```typescript
+// metrics-store.ts simplificado (<200 líneas)
+export const useMetricsStore = create<MetricsStore>((set) => ({
+  metrics: [],
+  loading: false,
+  error: null,
+  
+  // Solo métodos esenciales implementados
+  fetchMetrics: async () => {
+    set({ loading: true })
+    const { data, error } = await supabase.from('registros').select()
+    set({ metrics: data || [], loading: false, error })
+  },
+  
+  addMetric: (metric) => set((state) => ({ 
+    metrics: [...state.metrics, metric] 
+  }))
+}))
+```
+
+## **2. Validaciones Excesivas en CSV**
+
+### **Error:**
+Implementar validaciones granulares por celda con detección de anomalías complejas.
+
+### **Síntoma:**
+```python
+# 678 líneas de validaciones
+def validate_row(self, row_data, row_number):
+    errors = []
+    # Validación tipo por tipo
+    # Detección de anomalías
+    # Validaciones lógicas complejas
+    # ...
+```
+
+### **Solución:**
+```python
+def validate_csv_simple(df):
+    """Validación básica para MVP"""
+    # Solo validaciones críticas
+    required_cols = ['fecha', 'nombre', 't_total', 'brz_total']
+    
+    # Verificar columnas
+    missing = set(required_cols) - set(df.columns)
+    if missing:
+        return False, f"Columnas faltantes: {missing}"
+    
+    # Convertir tipos básicos
+    df['t_total'] = pd.to_numeric(df['t_total'], errors='coerce')
+    df['brz_total'] = pd.to_numeric(df['brz_total'], errors='coerce')
+    
+    # Eliminar filas con datos críticos faltantes
+    df_clean = df.dropna(subset=['t_total', 'brz_total'])
+    
+    return True, df_clean
+```
+
+## **3. Configuración de Herramientas No Utilizadas**
+
+### **Error:**
+Configurar webpack para SVG cuando no hay SVGs en el proyecto.
+
+### **Síntoma:**
+```typescript
+// next.config.ts
+webpack: (config) => {
+  config.module.rules.push({
+    test: /\.svg$/,
+    use: ['@svgr/webpack']
+  });
+  return config;
+}
+```
+
+### **Solución:**
+Eliminar configuraciones no utilizadas y agregar solo cuando sea necesario.
+
+## **4. Carpetas Vacías sin Propósito**
+
+### **Error:**
+Mantener carpetas vacías como `/public/icons/` y `/public/images/`.
+
+### **Solución:**
+```bash
+# Opción 1: Eliminar si no se necesitan
+rm -rf public/icons public/images
+
+# Opción 2: Agregar .gitkeep con explicación
+echo "# Carpeta para iconos del tema Phoenix" > public/icons/.gitkeep
+```
+
+## **5. CORS Demasiado Permisivo**
+
+### **Error:**
+```json
+// vercel.json
+"Access-Control-Allow-Origin": "*"
+```
+
+### **Solución:**
+```json
+// Para desarrollo
+"Access-Control-Allow-Origin": "http://localhost:3000"
+
+// Para producción
+"Access-Control-Allow-Origin": "https://aqualytics.vercel.app"
+```
+
+## **6. Imports y Exports No Utilizados**
+
+### **Error:**
+Exportar funciones de hooks que no existen o no se usan.
+
+### **Síntoma:**
+```typescript
+// store/index.ts
+export { useSwimmerOperations } from './swimmers-store' // No existe
+```
+
+### **Solución:**
+Solo exportar lo que realmente existe y se usa:
+```typescript
+// store/index.ts
+export { useSwimmersStore } from './swimmers-store'
+export { useMetricsStore } from './metrics-store'
+```
+
+## **7. Dependencias en Cliente que Deberían Estar en Servidor**
+
+### **Error:**
+```typescript
+// next.config.ts
+serverExternalPackages: ['pandas', 'numpy']
+```
+
+### **Solución:**
+Estas dependencias deben manejarse exclusivamente en el backend Python, no en Next.js.
+
+## **Checklist de Prevención**
+
+Antes de cada commit:
+- [ ] ¿Todos los archivos tienen menos de 300 líneas?
+- [ ] ¿Todos los métodos TODO han sido eliminados?
+- [ ] ¿Las validaciones son las mínimas necesarias?
+- [ ] ¿No hay carpetas vacías sin propósito?
+- [ ] ¿Las configuraciones corresponden a herramientas en uso?
+- [ ] ¿Los imports/exports son todos válidos?
+- [ ] ¿El código nuevo sigue el principio YAGNI?

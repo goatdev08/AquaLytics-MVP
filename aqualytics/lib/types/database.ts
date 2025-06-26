@@ -475,7 +475,7 @@ export function esEstiloValido(estilo: string): estilo is EstiloValido {
 // ===== EXPORT TYPES PARA SUPABASE CLIENT =====
 
 export type SupabaseDatabase = Database
-  export type SupabaseSchema = Database['public']
-  export type SupabaseTables = SupabaseSchema['Tables']
+export type SupabaseSchema = Database['public']
+export type SupabaseTables = SupabaseSchema['Tables']
 
  

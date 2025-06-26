@@ -40,6 +40,16 @@ const navigation: NavItem[] = [
     )
   },
   {
+    name: 'Entrada de Datos',
+    href: '/data-entry',
+    description: 'Carga manual y CSV de métricas',
+    icon: (
+      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+      </svg>
+    )
+  },
+  {
     name: 'Nadadores',
     href: '/swimmers',
     description: 'Gestión de nadadores',

@@ -3,22 +3,22 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   
-  // Configuración para external packages (corregido)
-  serverExternalPackages: ['pandas', 'numpy'],
-  
   // Configuración para deployment en Vercel
   images: {
     domains: ['localhost'],
+    // Agregar dominios adicionales si necesitas cargar imágenes externas
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
   },
   
-  // Configuración para Phoenix theme
-  webpack: (config: any) => {
-    config.module.rules.push({
-      test: /\.svg$/,
-      use: ['@svgr/webpack']
-    });
-    return config;
-  }
+  // Optimización para producción
+  experimental: {
+    optimizePackageImports: ['@supabase/supabase-js', 'chart.js'],
+  },
 };
 
 export default nextConfig;
