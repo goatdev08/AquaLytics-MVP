@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react'
 import { Card } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
-import { phoenixColors } from '@/lib/utils/chart-configs'
 
 interface MetricScore {
   metric: string
@@ -88,7 +87,8 @@ export default function RankingTable({
   // Ordenar nadadores
   const sortedSwimmers = useMemo(() => {
     return [...filteredSwimmers].sort((a, b) => {
-      let aValue: any, bValue: any
+      let aValue: string | number
+      let bValue: string | number
 
       if (sortField === 'nombre') {
         aValue = a.nombre
@@ -110,13 +110,16 @@ export default function RankingTable({
         bValue = bScore?.value || 0
       }
 
-      if (typeof aValue === 'string') {
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
         return sortDirection === 'asc' 
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue)
       }
 
-      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
+      // Tanto aValue como bValue son numbers en este punto
+      const aNum = typeof aValue === 'number' ? aValue : 0
+      const bNum = typeof bValue === 'number' ? bValue : 0
+      return sortDirection === 'asc' ? aNum - bNum : bNum - aNum
     })
   }, [filteredSwimmers, sortField, sortDirection])
 

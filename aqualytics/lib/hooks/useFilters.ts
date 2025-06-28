@@ -111,7 +111,7 @@ export function useFilters() {
   }, [setFilters])
 
   // Función para aplicar filtros a un conjunto de datos
-  const applyFilters = useCallback(<T extends Record<string, any>>(
+  const applyFilters = useCallback(<T extends Record<string, unknown>>(
     data: T[],
     options?: {
       dateField?: keyof T

@@ -17,25 +17,24 @@ import {
   Legend,
   Filler,
   ChartOptions,
-  TooltipItem,
 } from 'chart.js'
-import zoomPlugin from 'chartjs-plugin-zoom'
 
-// Registrar componentes necesarios de Chart.js
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  RadialLinearScale,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-  zoomPlugin
-)
+// Registrar componentes necesarios de Chart.js solo en el cliente
+if (typeof window !== 'undefined') {
+  ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    BarElement,
+    RadialLinearScale,
+    ArcElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler
+  )
+}
 
 // Phoenix Theme Colors
 export const phoenixColors = {
@@ -102,7 +101,7 @@ export const datasetColorSchemes = {
 }
 
 // Configuración base compartida para todos los gráficos
-export const baseChartOptions: ChartOptions<any> = {
+export const baseChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
@@ -130,7 +129,8 @@ export const baseChartOptions: ChartOptions<any> = {
       mode: 'index' as const,
       intersect: false,
       callbacks: {
-        label: function(context: TooltipItem<any>) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        label: function(context: any) {
           let label = context.dataset.label || '';
           if (label) {
             label += ': ';
@@ -198,33 +198,55 @@ export const lineChartOptions: ChartOptions<'line'> = {
 // Configuración específica para gráficos de radar
 export const radarChartOptions: ChartOptions<'radar'> = {
   ...baseChartOptions,
+  responsive: true,
+  maintainAspectRatio: false,
+  layout: {
+    padding: {
+      top: 20,
+      bottom: 20,
+      left: 20,
+      right: 20
+    }
+  },
   scales: {
     r: {
       beginAtZero: true,
       grid: {
-        color: 'rgba(0, 0, 0, 0.05)',
+        color: 'rgba(0, 0, 0, 0.08)',
+        lineWidth: 1,
+      },
+      angleLines: {
+        color: 'rgba(0, 0, 0, 0.1)',
+        lineWidth: 1,
       },
       pointLabels: {
         font: {
-          size: 12,
+          size: 11,
           family: "'Inter', sans-serif",
+          weight: 'normal' as const,
         },
+        color: '#374151',
+        padding: 15,
       },
       ticks: {
-        stepSize: 0.5,
+        stepSize: 20,
+        showLabelBackdrop: false,
+        color: '#9CA3AF',
         font: {
-          size: 10,
+          size: 9,
         },
       },
     },
   },
   elements: {
     line: {
-      borderWidth: 3,
+      borderWidth: 2,
+      tension: 0.1,
     },
     point: {
-      radius: 4,
-      hoverRadius: 6,
+      radius: 3,
+      hoverRadius: 5,
+      borderWidth: 2,
     },
   },
 }
@@ -265,40 +287,23 @@ export const barChartOptions: ChartOptions<'bar'> = {
   },
 }
 
-// Función helper para crear gradientes
+// Función helper para crear gradientes (solo en cliente)
 export const createGradient = (
   ctx: CanvasRenderingContext2D,
   color: string,
   opacity: number = 0.2
 ) => {
+  if (typeof window === 'undefined') return color
+  
   const gradient = ctx.createLinearGradient(0, 0, 0, 400)
   gradient.addColorStop(0, `${color}${Math.round(opacity * 255).toString(16)}`)
   gradient.addColorStop(1, `${color}00`)
   return gradient
 }
 
-// Configuración para zoom (opcional)
-export const zoomOptions = {
-  zoom: {
-    wheel: {
-      enabled: true,
-    },
-    pinch: {
-      enabled: true,
-    },
-    mode: 'x' as const,
-  },
-  pan: {
-    enabled: true,
-    mode: 'x' as const,
-  },
-  limits: {
-    x: { min: 'original' as const, max: 'original' as const },
-  },
-}
-
 // Función para aplicar tema oscuro a las opciones
-export const applyDarkMode = (options: ChartOptions<any>): ChartOptions<any> => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const applyDarkMode = (options: any): any => {
   const darkOptions = JSON.parse(JSON.stringify(options))
   
   // Actualizar colores para modo oscuro
@@ -307,15 +312,21 @@ export const applyDarkMode = (options: ChartOptions<any>): ChartOptions<any> => 
   }
   
   if (darkOptions.scales) {
-    Object.values(darkOptions.scales).forEach((scale: any) => {
-      if (scale.ticks) {
-        scale.ticks.color = phoenixColors.textDark
+    Object.values(darkOptions.scales).forEach((scale: unknown) => {
+      const scaleOptions = scale as {
+        ticks?: { color?: string }
+        grid?: { color?: string }
+        pointLabels?: { color?: string }
       }
-      if (scale.grid) {
-        scale.grid.color = 'rgba(255, 255, 255, 0.1)'
+      
+      if (scaleOptions.ticks) {
+        scaleOptions.ticks.color = phoenixColors.textDark
       }
-      if (scale.pointLabels) {
-        scale.pointLabels.color = phoenixColors.textDark
+      if (scaleOptions.grid) {
+        scaleOptions.grid.color = 'rgba(255, 255, 255, 0.1)'
+      }
+      if (scaleOptions.pointLabels) {
+        scaleOptions.pointLabels.color = phoenixColors.textDark
       }
     })
   }
@@ -332,6 +343,5 @@ export const chartConfigs = {
   radarChartOptions,
   barChartOptions,
   createGradient,
-  zoomOptions,
   applyDarkMode,
 } 

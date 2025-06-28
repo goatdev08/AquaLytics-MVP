@@ -3,6 +3,49 @@ import { NextRequest, NextResponse } from 'next/server'
 // Configuración del backend Python
 const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || 'http://localhost:8000'
 
+/**
+ * Procesar respuesta del backend Python y transformarla al formato esperado
+ */
+async function processBackendResponse(response: Response, startTime: number): Promise<NextResponse<ProcessResponse>> {
+  const processingTime = Date.now() - startTime
+  
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error(`❌ Error del backend Python: ${response.status} - ${errorText}`)
+    
+    return NextResponse.json({
+      success: false,
+      message: 'Error del backend de procesamiento',
+      error: `Error ${response.status}: ${errorText}`
+    }, { status: response.status })
+  }
+  
+  // Parsear respuesta del backend
+  const pythonResult = await response.json()
+  
+  console.log(`✅ Backend Python completado en ${processingTime}ms:`, pythonResult)
+  
+  // Transformar respuesta del backend a nuestro formato
+  const processResponse: ProcessResponse = {
+    success: pythonResult.success || false,
+    message: pythonResult.message || 'Procesamiento completado',
+    data: pythonResult.data ? {
+      processedRows: pythonResult.data.processed_rows || 0,
+      validationErrors: pythonResult.data.validation_errors || [],
+      warnings: pythonResult.data.warnings || [],
+      metrics: {
+        averageTime: pythonResult.data.metrics?.average_time || 0,
+        totalSwimmers: pythonResult.data.metrics?.total_swimmers || 0,
+        competitions: pythonResult.data.metrics?.competitions || []
+      },
+      uploadedToDatabase: pythonResult.data.uploaded_to_database || false
+    } : undefined,
+    error: pythonResult.error
+  }
+  
+  return NextResponse.json(processResponse)
+}
+
 interface ProcessResponse {
   success: boolean
   message: string
@@ -22,7 +65,7 @@ interface ProcessResponse {
 
 /**
  * POST /api/process-csv
- * Proxy hacia el backend Python para procesamiento completo de CSV
+ * Proxy hacia el backend Python para procesamiento completo de CSV y datos manuales
  */
 export async function POST(request: NextRequest): Promise<NextResponse<ProcessResponse>> {
   const startTime = Date.now()
@@ -39,71 +82,77 @@ export async function POST(request: NextRequest): Promise<NextResponse<ProcessRe
       }, { status: 500 })
     }
     
-    // Extraer form data
-    const formData = await request.formData()
-    const file = formData.get('file') as File | null
+    const contentType = request.headers.get('content-type') || ''
     
-    if (!file) {
+    // Determinar si es CSV (FormData) o datos manuales (JSON)
+    if (contentType.includes('multipart/form-data')) {
+      // Procesamiento de CSV
+      console.log('📄 Procesando archivo CSV...')
+      
+      const formData = await request.formData()
+      const file = formData.get('file') as File | null
+      
+      if (!file) {
+        return NextResponse.json({
+          success: false,
+          message: 'Error de validación',
+          error: 'No se encontró archivo en la petición'
+        }, { status: 400 })
+      }
+      
+      console.log(`📄 Enviando archivo al backend: ${file.name} (${file.size} bytes)`)
+      
+      // Preparar FormData para el backend Python
+      const pythonFormData = new FormData()
+      pythonFormData.append('file', file)
+      
+      // Enviar al backend Python
+      const response = await fetch(`${PYTHON_BACKEND_URL}/process-csv`, {
+        method: 'POST',
+        body: pythonFormData,
+        headers: {
+          // No establecer Content-Type manualmente para multipart/form-data
+          'Accept': 'application/json',
+        },
+      })
+      
+      return await processBackendResponse(response, startTime)
+      
+    } else if (contentType.includes('application/json')) {
+      // Procesamiento de datos manuales
+      console.log('📝 Procesando métricas manuales...')
+      
+      const jsonData = await request.json()
+      
+      if (!jsonData || !jsonData.swimmer_id || !jsonData.metrics) {
+        return NextResponse.json({
+          success: false,
+          message: 'Error de validación',
+          error: 'Datos de métricas manuales incompletos'
+        }, { status: 400 })
+      }
+      
+      console.log(`📊 Enviando métricas manuales al backend para nadador ${jsonData.swimmer_id}`)
+      
+      // Enviar al backend Python
+      const response = await fetch(`${PYTHON_BACKEND_URL}/process-manual`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(jsonData),
+      })
+      
+      return await processBackendResponse(response, startTime)
+      
+    } else {
       return NextResponse.json({
         success: false,
-        message: 'Error de validación',
-        error: 'No se encontró archivo en la petición'
+        message: 'Tipo de contenido no soportado',
+        error: 'Se esperaba multipart/form-data (CSV) o application/json (manual)'
       }, { status: 400 })
     }
-    
-    console.log(`📄 Enviando archivo al backend: ${file.name} (${file.size} bytes)`)
-    
-    // Preparar FormData para el backend Python
-    const pythonFormData = new FormData()
-    pythonFormData.append('file', file)
-    
-    // Enviar al backend Python
-    const response = await fetch(`${PYTHON_BACKEND_URL}/api/ingest/csv`, {
-      method: 'POST',
-      body: pythonFormData,
-      headers: {
-        // No establecer Content-Type manualmente para multipart/form-data
-        'Accept': 'application/json',
-      },
-    })
-    
-    const _processingTime = Date.now() - startTime
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`❌ Error del backend Python: ${response.status} - ${errorText}`)
-      
-      return NextResponse.json({
-        success: false,
-        message: 'Error del backend de procesamiento',
-        error: `Error ${response.status}: ${errorText}`
-      }, { status: response.status })
-    }
-    
-    // Parsear respuesta del backend
-    const pythonResult = await response.json()
-    
-    console.log(`✅ Backend Python completado en ${_processingTime}ms:`, pythonResult)
-    
-    // Transformar respuesta del backend a nuestro formato
-    const processResponse: ProcessResponse = {
-      success: pythonResult.success || false,
-      message: pythonResult.message || 'Procesamiento completado',
-      data: pythonResult.data ? {
-        processedRows: pythonResult.data.processed_rows || 0,
-        validationErrors: pythonResult.data.validation_errors || [],
-        warnings: pythonResult.data.warnings || [],
-        metrics: {
-          averageTime: pythonResult.data.metrics?.average_time || 0,
-          totalSwimmers: pythonResult.data.metrics?.total_swimmers || 0,
-          competitions: pythonResult.data.metrics?.competitions || []
-        },
-        uploadedToDatabase: pythonResult.data.uploaded_to_database || false
-      } : undefined,
-      error: pythonResult.error
-    }
-    
-    return NextResponse.json(processResponse)
     
   } catch (error) {
     const _processingTime = Date.now() - startTime

@@ -1,14 +1,13 @@
 'use client'
 
-import React, { useRef, useEffect } from 'react'
+import React, { useRef } from 'react'
 import { Line } from 'react-chartjs-2'
 import { ChartData, ChartOptions } from 'chart.js'
 import { 
   lineChartOptions, 
   datasetColorSchemes, 
   phoenixColors,
-  applyDarkMode,
-  createGradient
+  applyDarkMode
 } from '@/lib/utils/chart-configs'
 import { Card } from '../ui/Card'
 import { Button } from '../ui/Button'
@@ -45,6 +44,7 @@ export default function ProgressChart({
   className = '',
   isDarkMode = false
 }: ProgressChartProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chartRef = useRef<any>(null)
   
   // Obtener todas las fechas únicas y ordenarlas

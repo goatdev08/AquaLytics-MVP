@@ -1,262 +1,242 @@
 'use client'
 
-import React, { useRef } from 'react'
+import React, { useMemo } from 'react'
+import {
+  Chart as ChartJS,
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend,
+  ChartOptions,
+  TooltipItem
+} from 'chart.js'
 import { Radar } from 'react-chartjs-2'
-import { ChartData, ChartOptions } from 'chart.js'
-import { 
-  radarChartOptions, 
-  datasetColorSchemes, 
-  phoenixColors,
-  applyDarkMode 
-} from '@/lib/utils/chart-configs'
-import { Card } from '../ui/Card'
-import { Button } from '../ui/Button'
+import { METRICS_DEFINITIONS } from '@/lib/utils/metrics-mapping'
 
-interface MetricValue {
+// Registrar componentes de Chart.js
+ChartJS.register(
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend
+)
+
+interface ComparisonDataPoint {
+  key: string
   metric: string
-  value: number
-  displayName?: string
-  unit?: string
+  unit: string
+  [nadadorNombre: string]: string | number
 }
 
-interface SwimmerComparison {
+interface SwimmerData {
+  id_nadador: number
   nombre: string
-  metrics: MetricValue[]
 }
 
 interface ComparisonChartProps {
-  title: string
-  swimmers: SwimmerComparison[]
-  colorScheme?: 'warm' | 'gradient' | 'monochrome'
-  showLegend?: boolean
-  height?: number
-  className?: string
-  isDarkMode?: boolean
+  swimmers: SwimmerData[]
+  metricGroup: string
+  comparisonData: ComparisonDataPoint[]
+  loading?: boolean
 }
 
-export default function ComparisonChart({
-  title,
-  swimmers,
-  colorScheme = 'warm',
-  showLegend = true,
-  height = 400,
-  className = '',
-  isDarkMode = false
+// Paleta de colores Phoenix para nadadores
+const PHOENIX_COLORS = [
+  { border: 'rgb(220, 38, 38)', background: 'rgba(220, 38, 38, 0.2)' }, // phoenix-red
+  { border: 'rgb(234, 88, 12)', background: 'rgba(234, 88, 12, 0.2)' }, // phoenix-orange
+  { border: 'rgb(217, 119, 6)', background: 'rgba(217, 119, 6, 0.2)' }, // phoenix-yellow
+  { border: 'rgb(245, 158, 11)', background: 'rgba(245, 158, 11, 0.2)' }, // phoenix-amber
+  { border: 'rgb(225, 29, 72)', background: 'rgba(225, 29, 72, 0.2)' }  // phoenix-rose
+]
+
+export default function ComparisonChart({ 
+  swimmers, 
+  metricGroup, 
+  comparisonData,
+  loading = false 
 }: ComparisonChartProps) {
-  const chartRef = useRef<any>(null)
   
-  // Obtener todas las métricas únicas
-  const allMetrics = new Set<string>()
-  swimmers.forEach(swimmer => {
-    swimmer.metrics.forEach(m => allMetrics.add(m.metric))
-  })
-  
-  // Crear labels para el radar
-  const metricOrder = Array.from(allMetrics)
-  const labels = metricOrder.map(metric => {
-    // Buscar el displayName de la primera ocurrencia
-    for (const swimmer of swimmers) {
-      const m = swimmer.metrics.find(met => met.metric === metric)
-      if (m?.displayName) return m.displayName
-    }
-    return metric
-  })
-  
-  // Normalizar valores (0-100) para mejor visualización
-  const normalizeValues = (metrics: MetricValue[]): number[] => {
-    // Encontrar min y max para cada métrica
-    const metricRanges = new Map<string, { min: number, max: number }>()
-    
-    swimmers.forEach(swimmer => {
-      swimmer.metrics.forEach(m => {
-        const current = metricRanges.get(m.metric) || { min: m.value, max: m.value }
-        metricRanges.set(m.metric, {
-          min: Math.min(current.min, m.value),
-          max: Math.max(current.max, m.value)
-        })
+  const chartData = useMemo(() => {
+    if (!comparisonData || comparisonData.length === 0) return null
+
+    // Extraer labels de métricas
+    const labels = comparisonData.map(item => {
+      const metricDef = METRICS_DEFINITIONS.find(m => m.parametro === item.key)
+      return metricDef?.label || item.metric
+    })
+
+    // Crear datasets para cada nadador
+    const datasets = swimmers.map((swimmer, index) => {
+      const colorScheme = PHOENIX_COLORS[index % PHOENIX_COLORS.length]
+      
+      // Extraer valores para este nadador
+      const data = comparisonData.map(item => {
+        const value = item[swimmer.nombre]
+        return typeof value === 'number' ? value : parseFloat(value as string) || 0
       })
+
+      return {
+        label: swimmer.nombre,
+        data,
+        borderColor: colorScheme.border,
+        backgroundColor: colorScheme.background,
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: colorScheme.border,
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: colorScheme.border
+      }
     })
-    
-    // Normalizar valores del nadador actual
-    return metricOrder.map(metric => {
-      const m = metrics.find(met => met.metric === metric)
-      if (!m) return 0
-      
-      const range = metricRanges.get(metric)!
-      if (range.max === range.min) return 50 // Si todos tienen el mismo valor
-      
-      // Normalizar a escala 0-100
-      return ((m.value - range.min) / (range.max - range.min)) * 100
-    })
-  }
-  
-  // Obtener colores según el esquema
-  const colors = datasetColorSchemes[colorScheme]
-  
-  // Preparar datasets
-  const datasets = swimmers.map((swimmer, index) => {
-    const color = colors[index % colors.length]
-    const normalizedValues = normalizeValues(swimmer.metrics)
-    
-    return {
-      label: swimmer.nombre,
-      data: normalizedValues,
-      borderColor: color,
-      backgroundColor: `${color}33`, // 20% opacity
-      pointBackgroundColor: color,
-      pointBorderColor: phoenixColors.background,
-      pointHoverBackgroundColor: phoenixColors.background,
-      pointHoverBorderColor: color,
-      borderWidth: 2,
-    }
-  })
-  
-  const chartData: ChartData<'radar'> = {
-    labels,
-    datasets
-  }
-  
-  // Configurar opciones
+
+    return { labels, datasets }
+  }, [swimmers, comparisonData])
+
   const options: ChartOptions<'radar'> = {
-    ...radarChartOptions,
+    responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      ...radarChartOptions.plugins,
       legend: {
-        ...radarChartOptions.plugins?.legend,
-        display: showLegend,
-        position: 'bottom' as const,
+        position: 'top' as const,
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: {
+            size: 12,
+            weight: 600
+          }
+        }
       },
       tooltip: {
-        ...radarChartOptions.plugins?.tooltip,
+        backgroundColor: 'rgba(220, 38, 38, 0.9)',
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        titleFont: {
+          size: 14,
+          weight: 'bold'
+        },
+        bodyFont: {
+          size: 12
+        },
+        padding: 12,
+        cornerRadius: 8,
+        displayColors: true,
         callbacks: {
-          label: (context) => {
-            const swimmer = swimmers[context.datasetIndex]
-            const metric = swimmer.metrics.find(m => 
-              (m.displayName || m.metric) === labels[context.dataIndex]
-            )
-            
-            if (metric) {
-              let label = `${context.dataset.label}: ${metric.value.toFixed(2)}`
-              if (metric.unit) {
-                label += ` ${metric.unit}`
-              }
-              label += ` (${context.parsed.r.toFixed(0)}%)`
-              return label
-            }
-            
-            return `${context.dataset.label}: ${context.parsed.r.toFixed(0)}%`
+          label: function(context: TooltipItem<'radar'>) {
+            const label = context.dataset.label || ''
+            const value = context.parsed.r
+            const metricData = comparisonData[context.dataIndex]
+            const unit = metricData?.unit || ''
+            return `${label}: ${value.toFixed(2)} ${unit}`
           }
         }
       }
     },
     scales: {
       r: {
-        ...radarChartOptions.scales?.r,
-        min: 0,
-        max: 100,
+        beginAtZero: true,
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)',
+          lineWidth: 1
+        },
+        angleLines: {
+          color: 'rgba(0, 0, 0, 0.1)',
+          lineWidth: 1
+        },
+        pointLabels: {
+          font: {
+            size: 11,
+            weight: 500
+          },
+          color: '#64748b'
+        },
         ticks: {
-          ...radarChartOptions.scales?.r?.ticks,
-          stepSize: 20,
-          callback: function(value) {
-            return value + '%'
+          backdropColor: 'transparent',
+          color: '#64748b',
+          font: {
+            size: 10
           }
         }
       }
+    },
+    elements: {
+      line: {
+        tension: 0.3
+      }
     }
   }
-  
-  // Aplicar tema oscuro si es necesario
-  const finalOptions = isDarkMode ? applyDarkMode(options) : options
-  
-  // Función para exportar
-  const exportChart = () => {
-    if (chartRef.current) {
-      const link = document.createElement('a')
-      link.download = `comparacion-${new Date().toISOString().split('T')[0]}.png`
-      link.href = chartRef.current.toBase64Image()
-      link.click()
-    }
-  }
-  
-  // Calcular puntuación general (promedio de porcentajes normalizados)
-  const calculateOverallScore = (swimmer: SwimmerComparison): number => {
-    const normalized = normalizeValues(swimmer.metrics)
-    return normalized.reduce((a, b) => a + b, 0) / normalized.length
-  }
-  
-  const scores = swimmers.map(s => ({
-    nombre: s.nombre,
-    score: calculateOverallScore(s)
-  })).sort((a, b) => b.score - a.score)
-  
-  return (
-    <Card className={`p-6 ${className}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={exportChart}
-          className="text-xs"
-        >
-          Exportar
-        </Button>
+
+  // Estado de loading
+  if (loading) {
+    return (
+      <div className="h-80 flex items-center justify-center bg-gradient-to-br from-muted/20 to-muted/10 rounded-xl animate-pulse">
+        <div className="text-center">
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-phoenix-red/20 to-phoenix-orange/20 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full border-4 border-phoenix-red/30 border-t-phoenix-red animate-spin"></div>
+          </div>
+          <p className="text-sm text-muted-foreground font-medium">
+            Cargando gráfico de comparación...
+          </p>
+        </div>
       </div>
-      
-      {/* Puntuaciones generales */}
-      <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-900/30 rounded-lg">
-        <h4 className="text-sm font-medium text-muted-foreground mb-2">Puntuación General</h4>
-        <div className="space-y-2">
-          {scores.map((score, index) => (
-            <div key={score.nombre} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div 
-                  className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: colors[swimmers.findIndex(s => s.nombre === score.nombre) % colors.length] }}
-                />
-                <span className="text-sm font-medium">
-                  {score.nombre}
-                  {index === 0 && ' 🥇'}
-                  {index === 1 && ' 🥈'}
-                  {index === 2 && ' 🥉'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div 
-                    className="h-2 rounded-full transition-all duration-300"
-                    style={{ 
-                      width: `${score.score}%`,
-                      backgroundColor: colors[swimmers.findIndex(s => s.nombre === score.nombre) % colors.length]
-                    }}
-                  />
-                </div>
-                <span className="text-sm font-medium">{score.score.toFixed(0)}%</span>
-              </div>
-            </div>
-          ))}
+    )
+  }
+
+  // Estado sin datos
+  if (!chartData) {
+    return (
+      <div className="h-80 flex items-center justify-center bg-gradient-to-br from-muted/20 to-muted/10 rounded-xl">
+        <div className="text-center">
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-phoenix-red/10 to-phoenix-orange/10 flex items-center justify-center">
+            <span className="text-4xl">📊</span>
+          </div>
+          <p className="text-sm text-muted-foreground font-medium">
+            No hay datos de comparación disponibles
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Selecciona nadadores y métricas para comenzar
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative w-full h-80 p-4">
+      {/* Indicador de métricas */}
+      <div className="absolute top-2 right-2 z-10">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full border">
+          <div className="w-2 h-2 rounded-full bg-phoenix-red animate-pulse"></div>
+          <span>Métricas de {metricGroup}</span>
         </div>
       </div>
       
-      {/* Gráfico de radar */}
-      <div style={{ height: `${height}px` }}>
-        <Radar
-          ref={chartRef}
-          data={chartData}
-          options={finalOptions}
-        />
-      </div>
+      {/* Gráfico Radar */}
+      <Radar data={chartData} options={options} />
       
-      {/* Leyenda de métricas */}
-      <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-        <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
-          <strong>Nota:</strong> Los valores están normalizados (0-100%) para facilitar la comparación visual.
-        </p>
-        <p className="text-xs text-blue-600 dark:text-blue-400">
-          100% = Mejor valor entre todos los nadadores | 0% = Peor valor
-        </p>
+      {/* Leyenda adicional con información */}
+      <div className="mt-4 flex flex-wrap gap-2 justify-center">
+        {swimmers.map((swimmer, index) => {
+          const colorScheme = PHOENIX_COLORS[index % PHOENIX_COLORS.length]
+          return (
+            <div 
+              key={swimmer.id_nadador}
+              className="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/50 text-xs"
+            >
+              <div 
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: colorScheme.border }}
+              />
+              <span className="font-medium">{swimmer.nombre}</span>
+            </div>
+          )
+        })}
       </div>
-    </Card>
+    </div>
   )
 } 

@@ -6,6 +6,7 @@
 import React from 'react'
 import { SwimmerList } from '@/components/swimmers/SwimmerList'
 import MainLayout from '@/components/layout/MainLayout'
+import Link from 'next/link'
 
 export default function SwimmersPage() {
   return (

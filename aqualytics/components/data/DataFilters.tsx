@@ -46,11 +46,11 @@ interface DataFiltersProps {
   
   // Opciones disponibles
   availableSwimmers?: { id: string; nombre: string }[]
-  availableCompetitions?: { id: string; nombre: string; fecha: string }[]
+  _availableCompetitions?: { id: string; nombre: string; fecha: string }[]
   availableDistances?: string[]
   availableStrokes?: string[]
-  availablePhases?: string[]
-  availableMetrics?: { id: string; nombre: string; tipo: 'automatic' | 'manual' }[]
+  _availablePhases?: string[]
+  _availableMetrics?: { id: string; nombre: string; tipo: 'automatic' | 'manual' }[]
   
   // Configuración
   showAllFilters?: boolean
@@ -62,11 +62,11 @@ export default function DataFilters({
   filters,
   onFiltersChange,
   availableSwimmers = [],
-  availableCompetitions = [],
+  _availableCompetitions = [],
   availableDistances = ['25m', '50m', '100m', '200m', '400m', '800m', '1500m'],
   availableStrokes = ['Libre', 'Espalda', 'Pecho', 'Mariposa', 'Combinado'],
-  availablePhases = ['Salida', 'Nado', 'Viraje', 'Llegada'],
-  availableMetrics = [],
+  _availablePhases = ['Salida', 'Nado', 'Viraje', 'Llegada'],
+  _availableMetrics = [],
   showAllFilters = true,
   collapsible = true,
   className = ''

@@ -6,6 +6,7 @@
 import { ReactNode } from 'react'
 import Header from './Header'
 import Footer from './Footer'
+import { ModalManager } from './ModalManager'
 
 interface MainLayoutProps {
   children: ReactNode
@@ -30,6 +31,9 @@ export default function MainLayout({
       
       {/* Footer */}
       {showFooter && <Footer />}
+      
+      {/* Sistema de modales global */}
+      <ModalManager />
     </div>
   )
 }

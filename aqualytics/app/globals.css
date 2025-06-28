@@ -29,6 +29,10 @@
   --phoenix-warm-gray: #78716C;
   --phoenix-ash: #6B7280;
   
+  /* Phoenix Extended Colors */
+  --phoenix-blue: #3B82F6;
+  --phoenix-purple: #A855F7;
+  
   /* Light Mode Colors */
   --background: #ffffff;
   --foreground: #171717;
@@ -161,6 +165,10 @@
   --color-phoenix-dawn: var(--phoenix-dawn);
   --color-phoenix-warm-gray: var(--phoenix-warm-gray);
   --color-phoenix-ash: var(--phoenix-ash);
+  
+  /* Phoenix Extended Colors */
+  --color-phoenix-blue: var(--phoenix-blue);
+  --color-phoenix-purple: var(--phoenix-purple);
   
   /* Phoenix Gradients */
   --color-phoenix-gradient-primary: linear-gradient(135deg, var(--phoenix-red) 0%, var(--phoenix-orange) 50%, var(--phoenix-yellow) 100%);

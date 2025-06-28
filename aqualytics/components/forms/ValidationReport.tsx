@@ -50,7 +50,7 @@ export default function ValidationReport({
         
         <div className="bg-white dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
           <div className="text-sm text-muted-foreground mb-1">Tasa de éxito</div>
-          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{successRate.toFixed(1)}%</div>
+          <div className="text-2xl font-bold text-phoenix-purple dark:text-phoenix-purple">{successRate.toFixed(1)}%</div>
         </div>
       </div>
 

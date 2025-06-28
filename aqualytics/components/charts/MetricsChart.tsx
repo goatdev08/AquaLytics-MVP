@@ -39,6 +39,7 @@ export default function MetricsChart({
   className = '',
   isDarkMode = false
 }: MetricsChartProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chartRef = useRef<any>(null)
 
   // Ordenar datos por fecha

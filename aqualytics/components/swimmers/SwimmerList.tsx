@@ -15,6 +15,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { Modal } from '@/components/ui/Modal'
 import type { Nadador } from '@/lib/types/database'
 import type { SwimmerFormData } from '@/lib/utils/validators'
+import Link from 'next/link'
 
 // ===== TIPOS =====
 
@@ -122,9 +123,15 @@ function SwimmerCard({
             </div>
             
             <div className="flex-grow min-w-0">
-              <h3 className="font-semibold text-foreground truncate">
-                {swimmer.nombre}
-              </h3>
+              <Link 
+                href={`/swimmers/${swimmer.id_nadador}`}
+                className="hover:text-phoenix-red transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="font-semibold text-foreground truncate hover:underline">
+                  {swimmer.nombre}
+                </h3>
+              </Link>
               
               <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                 {swimmer.edad && (
@@ -160,6 +167,21 @@ function SwimmerCard({
 
         {/* Botones de acción */}
         <div className="flex items-center gap-2 ml-4">
+          <Link
+            href={`/swimmers/${swimmer.id_nadador}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </Button>
+          </Link>
+          
           {onEdit && (
             <Button
               variant="ghost"

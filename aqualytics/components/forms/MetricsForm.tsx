@@ -811,7 +811,7 @@ export function MetricsForm({
         {/* Sección: Métricas del Segundo Segmento (25-50m) */}
         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
           <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-5 w-5 text-phoenix-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
             Segundo Segmento (25-50m)
@@ -934,7 +934,7 @@ export function MetricsForm({
           {/* Preview de cálculos en tiempo real para el segundo segmento */}
           {currentValues.t25_2 > 0 && (
             <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-800">
-              <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">
+              <h4 className="text-sm font-semibold text-phoenix-blue dark:text-phoenix-blue mb-2">
                 📊 Cálculos en Tiempo Real - Segmento 2
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
@@ -968,7 +968,7 @@ export function MetricsForm({
         {currentValues.t25_1 > 0 && currentValues.t25_2 > 0 && (
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-700">
             <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <svg className="h-5 w-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-5 w-5 text-phoenix-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
               Comparación entre Segmentos
@@ -978,7 +978,7 @@ export function MetricsForm({
               
               {/* Comparación de Velocidades */}
               <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-                <h5 className="font-medium text-purple-700 dark:text-purple-300 mb-2">Velocidades</h5>
+                <h5 className="font-medium text-phoenix-purple dark:text-phoenix-purple mb-2">Velocidades</h5>
                 <div className="space-y-1">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Seg 1:</span>
@@ -999,7 +999,7 @@ export function MetricsForm({
 
               {/* Comparación de Brazadas */}
               <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-                <h5 className="font-medium text-purple-700 dark:text-purple-300 mb-2">Brazadas</h5>
+                <h5 className="font-medium text-phoenix-purple dark:text-phoenix-purple mb-2">Brazadas</h5>
                 <div className="space-y-1">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Seg 1:</span>
@@ -1020,7 +1020,7 @@ export function MetricsForm({
 
               {/* Comparación de Flechas */}
               <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-                <h5 className="font-medium text-purple-700 dark:text-purple-300 mb-2">Flechas</h5>
+                <h5 className="font-medium text-phoenix-purple dark:text-phoenix-purple mb-2">Flechas</h5>
                 <div className="space-y-1">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">F1:</span>
@@ -1032,7 +1032,7 @@ export function MetricsForm({
                   </div>
                   <div className="flex justify-between border-t pt-1">
                     <span className="text-muted-foreground">Promedio:</span>
-                    <span className="font-mono text-purple-600">
+                    <span className="font-mono text-phoenix-purple">
                       {((currentValues.f1 + currentValues.f2) / 2).toFixed(2)}m
                     </span>
                   </div>
@@ -1041,7 +1041,7 @@ export function MetricsForm({
 
               {/* Consistencia General */}
               <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-                <h5 className="font-medium text-purple-700 dark:text-purple-300 mb-2">Consistencia</h5>
+                <h5 className="font-medium text-phoenix-purple dark:text-phoenix-purple mb-2">Consistencia</h5>
                 <div className="space-y-1">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Velocidad:</span>
@@ -1057,7 +1057,7 @@ export function MetricsForm({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Estado:</span>
-                    <span className="font-mono text-purple-600">
+                    <span className="font-mono text-phoenix-purple">
                       {currentValues.t25_2 > currentValues.t25_1 ? '📈 Fatiga' : '⚡ Mejora'}
                     </span>
                   </div>

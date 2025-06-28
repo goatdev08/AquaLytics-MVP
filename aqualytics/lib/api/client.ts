@@ -42,6 +42,22 @@ interface ApiStatus {
   timestamp: string
 }
 
+interface ManualMetricsResponse extends BaseResponse {
+  data?: {
+    recordId: number
+    automaticMetrics: {
+      v1: number
+      v2: number
+      v_promedio: number
+      dist_x_brz: number
+      dist_sin_f: number
+      f_promedio: number
+    }
+    savedRecords: number
+    processingTime: number
+  }
+}
+
 class AquaLyticsApiClient {
   private baseUrl: string
 
@@ -114,6 +130,25 @@ class AquaLyticsApiClient {
   }
 
   /**
+   * Enviar métricas manuales para procesamiento
+   */
+  async submitManualMetrics(data: Record<string, unknown>): Promise<ManualMetricsResponse> {
+    const response = await fetch(`${this.baseUrl}/api/process-csv`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    return response.json()
+  }
+
+  /**
    * Validar archivo antes de envío
    */
   validateFile(file: File): { valid: boolean; errors: string[] } {
@@ -145,5 +180,5 @@ class AquaLyticsApiClient {
 export const apiClient = new AquaLyticsApiClient()
 
 // Exportar tipos para uso en componentes
-export type { UploadResponse, ProcessResponse, ApiStatus }
+export type { UploadResponse, ProcessResponse, ManualMetricsResponse, ApiStatus }
 export { AquaLyticsApiClient } 
