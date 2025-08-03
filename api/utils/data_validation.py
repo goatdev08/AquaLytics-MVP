@@ -45,7 +45,7 @@ class SwimmingDataValidator:
         # Campos requeridos
         self.required_manual_fields = ['t25_1', 't25_2', 't_total', 'brz_total', 'f1', 'f2']
         self.required_record_fields = ['id_nadador', 'competencia_id', 'fecha', 'distancia_id', 
-                                     'estilo_id', 'fase_id', 'parametro_id', 'valor']
+                                     'estilo_id', 'fase_id', 'metrica_id', 'valor']
         
         # Patrones regex
         self.patterns = {
@@ -136,7 +136,7 @@ class SwimmingDataValidator:
             return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
         
         # Validar IDs (deben ser enteros positivos)
-        id_fields = ['id_nadador', 'competencia_id', 'distancia_id', 'estilo_id', 'fase_id', 'parametro_id']
+        id_fields = ['id_nadador', 'competencia_id', 'distancia_id', 'estilo_id', 'fase_id', 'metrica_id']
         for field in id_fields:
             if field in data:
                 if not isinstance(data[field], int) or data[field] <= 0:

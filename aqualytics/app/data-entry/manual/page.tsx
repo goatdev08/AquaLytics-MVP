@@ -4,63 +4,36 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { MetricsForm } from '@/components/forms/MetricsForm'
 import { type MetricFormData } from '@/lib/utils/validators'
-import { apiClient } from '@/lib/api/client'
+import toast from 'react-hot-toast'
 
 export default function ManualDataEntryPage() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (data: MetricFormData) => {
+    const toastId = toast.loading('Guardando registro...');
     try {
       setIsSubmitting(true)
       
-      // Transformar datos del formulario al formato esperado por el backend
-      const processedData = {
-        swimmer_id: data.swimmer_id,
-        competition_id: data.competition_id,
-        date: data.date,
-        distance_id: data.distance_id,
-        stroke_id: data.stroke_id,
-        phase_id: data.phase_id,
-        metrics: {
-          // Métricas manuales del primer segmento
-          t15_1: data.t15_1,
-          brz_1: data.brz_1,
-          t25_1: data.t25_1,
-          f1: data.f1,
-          // Métricas manuales del segundo segmento
-          t15_2: data.t15_2,
-          brz_2: data.brz_2,
-          t25_2: data.t25_2,
-          f2: data.f2,
-          // Métricas globales manuales
-          t_total: data.t_total,
-          brz_total: data.brz_total
-        }
-      }
-
-      console.log('📊 Enviando métricas manuales:', processedData)
-
-      // Enviar datos al backend Python para procesamiento y almacenamiento
-      const result = await apiClient.submitManualMetrics(processedData)
+      const response = await fetch('/api/ingest', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
       
-      if (result.success) {
-        console.log('✅ Métricas guardadas exitosamente:', result.data)
-        
-        // Opcional: Mostrar datos calculados automáticamente
-        if (result.data?.automaticMetrics) {
-          console.log('🧮 Métricas automáticas calculadas:', result.data.automaticMetrics)
-        }
-        
-        // Opcional: Redirigir a la página de visualización o dashboard
-        // router.push(`/analytics/swimmer/${data.swimmer_id}`)
-      } else {
-        throw new Error(result.error || 'Error al procesar métricas')
+      const result = await response.json()
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Error al guardar el registro');
       }
 
+      toast.success('¡Éxito! El registro se ha guardado correctamente.', { id: toastId });
+      // Opcional: Redirigir o limpiar el formulario
+      // router.push(`/swimmers/${data.id_nadador}`);
+        
     } catch (error) {
-      console.error('❌ Error al enviar métricas:', error)
-      throw error // Re-lanzar para que MetricsForm maneje el error
+      console.error('❌ Error al enviar el registro:', error)
+      const errorMessage = error instanceof Error ? error.message : 'No se pudo guardar el registro.'
+      toast.error(`Error: ${errorMessage}`, { id: toastId });
     } finally {
       setIsSubmitting(false)
     }

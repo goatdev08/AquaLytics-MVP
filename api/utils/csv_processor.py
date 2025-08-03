@@ -176,8 +176,83 @@ class CSVProcessor:
         
         return df_clean, errors, warnings
     
-    def process_csv_file(self, file_content: Union[bytes, str], filename: str = "upload.csv") -> CSVProcessingResult:
-        """Procesa un archivo CSV completo"""
+    def transform_to_long_format(self, df: pd.DataFrame, reference_data: Dict[str, List[Dict[str, Any]]]) -> Tuple[List[Dict[str, Any]], List[str]]:
+        """Transforma el DataFrame de formato ancho a formato largo."""
+        
+        long_format_records = []
+        errors = []
+        
+        # Crear mapas de búsqueda para eficiencia
+        swimmer_map = {s['nombre'].lower(): s['id_nadador'] for s in reference_data.get('swimmers', [])}
+        competition_map = {c['competencia'].lower(): c['competencia_id'] for c in reference_data.get('competitions', [])}
+        phase_map = {p['nombre'].lower(): p['fase_id'] for p in reference_data.get('phases', [])}
+        metric_map = {m['nombre'].lower(): m['metrica_id'] for m in reference_data.get('metrics', [])}
+        
+        # Mapeo de columnas de CSV a nombres de métricas y segmentos
+        metric_column_map = {
+            't15_1': ('Tiempo 15m', 1),
+            'brz_1': ('Brazadas por Tramo', 1),
+            't25_1': ('Tiempo por Tramo', 1),
+            'f1': ('Flecha por Tramo', 1),
+            't15_2': ('Tiempo 15m', 2),
+            'brz_2': ('Brazadas por Tramo', 2),
+            't25_2': ('Tiempo por Tramo', 2),
+            'f2': ('Flecha por Tramo', 2),
+            't_total': ('Tiempo Total', None),
+            'brz_total': ('Brazadas Totales', None),
+        }
+
+        for index, row in df.iterrows():
+            try:
+                nadador_id = swimmer_map.get(str(row['nombre']).lower())
+                competencia_id = competition_map.get(str(row['competencia']).lower())
+                fase_id = phase_map.get(str(row['fase']).lower())
+                
+                # Crear prueba_id (simplificado, asume que ya existe en la BD)
+                # En un sistema real, esto podría necesitar una lógica más robusta
+                # para crear la prueba si no existe.
+                # Esta parte sigue siendo una simplificación y podría necesitar ajuste.
+                # Por ahora, dejamos que el frontend maneje la creación de la prueba si es necesario.
+                # El CSV se enfoca en registrar datos para pruebas existentes.
+                # Aquí necesitaríamos un lookup para prueba_id basado en distancia y estilo.
+                # Esta lógica se omite por brevedad pero es un punto a considerar.
+                
+                if not all([nadador_id, competencia_id, fase_id]):
+                    errors.append(f"Fila {index + 2}: No se pudo encontrar ID para nadador, competencia o fase.")
+                    continue
+
+                metricas_list = []
+                for col, (metric_name, segment) in metric_column_map.items():
+                    if col in row and pd.notna(row[col]):
+                        metric_id = metric_map.get(metric_name.lower())
+                        if metric_id:
+                            metricas_list.append({
+                                'metrica_id': metric_id,
+                                'valor': row[col],
+                                'segmento': segment
+                            })
+                        else:
+                             warnings.append(f"Fila {index + 2}: Métrica '{metric_name}' no encontrada en la base de datos.")
+
+
+                record = {
+                    "id_nadador": nadador_id,
+                    "competencia_id": competencia_id,
+                    "fecha": row['fecha'].strftime('%Y-%m-%d'),
+                    "fase_id": fase_id,
+                    # "prueba_id" necesitaría ser buscado o creado dinámicamente
+                    # Lo omitimos del payload principal por ahora. El frontend lo gestiona.
+                    "metricas": metricas_list
+                }
+                long_format_records.append(record)
+
+            except Exception as e:
+                errors.append(f"Fila {index + 2}: Error transformando - {str(e)}")
+
+        return long_format_records, errors
+    
+    def process_csv_file(self, file_content: Union[bytes, str], reference_data: Dict, filename: str = "upload.csv") -> CSVProcessingResult:
+        """Procesa un archivo CSV completo y lo transforma a formato largo"""
         try:
             # Validar tamaño
             if isinstance(file_content, bytes) and len(file_content) > self.max_file_size:
@@ -225,16 +300,24 @@ class CSVProcessor:
                     encoding_detected=encoding, delimiter_detected=delimiter
                 )
             
-            # Convertir a lista de diccionarios
-            data = df_clean.to_dict('records')
+            # Transformar a formato largo
+            long_format_data, transform_errors = self.transform_to_long_format(df_clean, reference_data)
+            errors.extend(transform_errors)
+
+            if len(errors) > 0:
+                 return CSVProcessingResult(
+                    success=False, total_rows=total_rows, valid_rows=0,
+                    errors=errors, warnings=warnings, data=[],
+                    encoding_detected=encoding, delimiter_detected=delimiter
+                )
             
             return CSVProcessingResult(
                 success=True,
                 total_rows=total_rows,
-                valid_rows=len(data),
+                valid_rows=len(long_format_data),
                 errors=[],
                 warnings=warnings,
-                data=data,
+                data=long_format_data,
                 encoding_detected=encoding,
                 delimiter_detected=delimiter
             )
@@ -250,7 +333,7 @@ class CSVProcessor:
 
 
 # Función helper para uso directo
-def process_csv_data(file_content: Union[bytes, str], filename: str = "upload.csv") -> CSVProcessingResult:
+def process_csv_data(file_content: Union[bytes, str], reference_data: Dict, filename: str = "upload.csv") -> CSVProcessingResult:
     """Función helper para procesar CSV"""
     processor = CSVProcessor()
-    return processor.process_csv_file(file_content, filename) 
+    return processor.process_csv_file(file_content, reference_data, filename) 

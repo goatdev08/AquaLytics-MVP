@@ -20,6 +20,12 @@ interface PersonalBest {
 
 interface ProgressionData {
   fecha: string
+  prueba_id: number
+  prueba_nombre: string
+  curso: string
+  distancia: number
+  estilo: string
+  metricas_registradas: number
   [metricKey: string]: string | number
 }
 
@@ -85,43 +91,64 @@ export function useSwimmerDetail(swimmerId: string): UseSwimmerDetailReturn {
       if (nadadorError) throw nadadorError
       setSwimmerInfo(nadador)
 
-      // 2. Obtener todos los registros del nadador
+      // 2. OBTENER MAPAS DE REFERENCIA (con nombres de prueba)
+      const { data: metricasMapData, error: metricasError } = await supabase.from('metricas').select('metrica_id, nombre')
+      const { data: distanciasMapData, error: distanciasError } = await supabase.from('distancias').select('distancia_id, distancia')
+      const { data: estilosMapData, error: estilosError } = await supabase.from('estilos').select('estilo_id, nombre')
+      const { data: pruebasMapData, error: pruebasError } = await supabase.from('pruebas').select('id, nombre, distancia_id, estilo_id, curso')
+
+      if (metricasError || distanciasError || estilosError || pruebasError) {
+        throw new Error('Error al cargar datos de referencia')
+      }
+      
+      const metricasMap = new Map(metricasMapData.map(m => [m.metrica_id, m.nombre]))
+      const distanciasMap = new Map(distanciasMapData.map(d => [d.distancia_id, d.distancia]))
+      const estilosMap = new Map(estilosMapData.map(e => [e.estilo_id, e.nombre]))
+      const pruebasMap = new Map(pruebasMapData.map(p => [p.id, p]))
+
+      // 3. OBTENER REGISTROS CRUDOS (sin JOINS)
       const { data: registros, error: registrosError } = await supabase
         .from('registros')
-        .select(`
-          *,
-          parametros!inner(parametro),
-          distancias!inner(distancia),
-          estilos!inner(estilo)
-        `)
+        .select('*') // Seleccionamos todo para tener los IDs
         .eq('id_nadador', parseInt(swimmerId))
         .order('fecha', { ascending: false })
 
-      if (registrosError) throw registrosError
+      if (registrosError) throw registrosError;
+      
+      // Enriquecer registros con los nombres de los mapas
+      const enrichedRegistros = registros.map(r => {
+        const pruebaInfo = pruebasMap.get(r.prueba_id)
+        const distanciaInfo = pruebaInfo ? distanciasMap.get(pruebaInfo.distancia_id) : 0
+        const estiloInfo = pruebaInfo ? estilosMap.get(pruebaInfo.estilo_id) : 'Desconocido'
+        
+        return {
+          ...r,
+          metrica_nombre: metricasMap.get(r.metrica_id) || 'Desconocida',
+          distancia_valor: distanciaInfo,
+          estilo_nombre: estiloInfo,
+          prueba_nombre: pruebaInfo?.nombre || 'Prueba Desconocida'
+        }
+      });
+      console.log('🕵️‍♂️ Registros Enriquecidos:', enrichedRegistros);
 
       // Procesar estilos y distancias únicas
-      const estilos = [...new Set(registros?.map(r => 
-        r.estilos && !Array.isArray(r.estilos) ? r.estilos.estilo : null
-      ).filter(Boolean) as string[])]
-      const distancias = [...new Set(registros?.map(r => 
-        r.distancias && !Array.isArray(r.distancias) ? r.distancias.distancia : null
-      ).filter(Boolean) as number[])]
+      const estilos = [...new Set(enrichedRegistros.map(r => r.estilo_nombre).filter((e): e is string => !!e && e !== 'Desconocido'))]
+      const distancias = [...new Set(enrichedRegistros.map(r => r.distancia_valor).filter((d): d is number => !!d && d > 0))]
       
       setAvailableEstilos(estilos.sort())
       setAvailableDistancias(distancias.sort((a, b) => a - b))
 
-      // 3. Calcular mejores marcas personales
+      // 4. Calcular mejores marcas personales
       const bestsMap = new Map<string, PersonalBest>()
       
-      registros?.forEach(registro => {
-        if (!registro.parametros || Array.isArray(registro.parametros)) return
-        if (!registro.distancias || Array.isArray(registro.distancias)) return
-        if (!registro.estilos || Array.isArray(registro.estilos)) return
-        if (registro.valor === null) return
-
-        const metrica = registro.parametros.parametro
-        const distancia = registro.distancias.distancia
-        const estilo = registro.estilos.estilo
+      enrichedRegistros.forEach(registro => {
+        if (!registro.metrica_nombre || registro.metrica_nombre === 'Desconocida' || !registro.distancia_valor || !registro.estilo_nombre || registro.estilo_nombre === 'Desconocido') {
+          return;
+        }
+        
+        const metrica = registro.metrica_nombre
+        const distancia = registro.distancia_valor
+        const estilo = registro.estilo_nombre
         const valor = typeof registro.valor === 'string' ? parseFloat(registro.valor) : registro.valor
         
         const metricDef = METRICS_DEFINITIONS.find(m => m.parametro === metrica)
@@ -130,8 +157,8 @@ export function useSwimmerDetail(swimmerId: string): UseSwimmerDetailReturn {
         const key = `${estilo}-${distancia}-${metrica}`
         const current = bestsMap.get(key)
         
-        // Para tiempo, menor es mejor. Para el resto, mayor es mejor
-        const isBetter = metrica.includes('T ') || metrica.includes('T15') || metrica.includes('T25') || metrica === 'T TOTAL'
+        const isTimeBased = metrica.includes('Tiempo') || metrica.startsWith('T')
+        const isBetter = isTimeBased
           ? !current || valor < current.valor
           : !current || valor > current.valor
 
@@ -147,79 +174,85 @@ export function useSwimmerDetail(swimmerId: string): UseSwimmerDetailReturn {
         }
       })
 
-      setPersonalBests(Array.from(bestsMap.values()))
+      const personalBestsResult = Array.from(bestsMap.values());
+      console.log('🏆 Mejores Marcas Personales Calculadas:', personalBestsResult);
+      setPersonalBests(personalBestsResult)
 
-      // 4. Calcular datos de progresión (filtrados por período)
+      // 5. Calcular datos de progresión (REFACTORIZADO)
       const now = new Date()
       let startDate = new Date()
       
       switch (filters.periodo) {
-        case '7d':
-          startDate.setDate(now.getDate() - 7)
-          break
-        case '30d':
-          startDate.setDate(now.getDate() - 30)
-          break
-        case '3m':
-          startDate.setMonth(now.getMonth() - 3)
-          break
-        case '1y':
-          startDate.setFullYear(now.getFullYear() - 1)
-          break
+        case '7d': startDate.setDate(now.getDate() - 7); break;
+        case '30d': startDate.setDate(now.getDate() - 30); break;
+        case '3m': startDate.setMonth(now.getMonth() - 3); break;
+        case '1y': startDate.setFullYear(now.getFullYear() - 1); break;
       }
 
-      const filteredRegistros = registros?.filter(r => {
+      const filteredRegistros = enrichedRegistros.filter(r => {
         const matchDate = r.fecha && new Date(r.fecha) >= startDate
-        const matchEstilo = !filters.estilo || (r.estilos && !Array.isArray(r.estilos) && r.estilos.estilo === filters.estilo)
-        const matchDistancia = !filters.distancia || (r.distancias && !Array.isArray(r.distancias) && r.distancias.distancia === filters.distancia)
-        
+        const matchEstilo = !filters.estilo || r.estilo_nombre === filters.estilo
+        const matchDistancia = !filters.distancia || r.distancia_valor === filters.distancia
         return matchDate && matchEstilo && matchDistancia
       }) || []
 
-      // Agrupar por fecha
       const progressionMap = new Map<string, ProgressionData>()
       
       filteredRegistros.forEach(registro => {
-        if (!registro.fecha || !registro.parametros || Array.isArray(registro.parametros)) return
+        const key = `${registro.fecha}-${registro.prueba_id}`
         
-        const fecha = registro.fecha
-        if (!progressionMap.has(fecha)) {
-          progressionMap.set(fecha, { fecha })
+        if (!progressionMap.has(key)) {
+          progressionMap.set(key, {
+            fecha: registro.fecha,
+            prueba_id: registro.prueba_id,
+            prueba_nombre: registro.prueba_nombre,
+            curso: pruebasMap.get(registro.prueba_id)?.curso || 'largo',
+            distancia: registro.distancia_valor || 0,
+            estilo: registro.estilo_nombre || 'Desconocido',
+            metricas_registradas: 0,
+          })
         }
         
-        const entry = progressionMap.get(fecha)!
-        const metrica = registro.parametros.parametro
+        const entry = progressionMap.get(key)!
+        entry.metricas_registradas += 1
         
+        const metrica = registro.metrica_nombre
         if (registro.valor !== null) {
           entry[metrica] = typeof registro.valor === 'string' ? parseFloat(registro.valor) : registro.valor
         }
       })
 
-      setProgressionData(
-        Array.from(progressionMap.values())
-          .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
-      )
+      const progressionDataResult = Array.from(progressionMap.values())
+        .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+      console.log('📈 Datos de Progresión (Pruebas Completas):', progressionDataResult);
+      setProgressionData(progressionDataResult)
 
-      // 5. Comparación con el equipo
-      const { data: allRegistros } = await supabase
+      // 6. Comparación con el equipo (REFACTORIZADO CON FILTROS)
+      const { data: allRegistros, error: allRegistrosError } = await supabase
         .from('registros')
-        .select(`
-          *,
-          parametros!inner(parametro),
-          distancias!inner(distancia),
-          estilos!inner(estilo)
-        `)
+        .select('*') // Consulta cruda sin JOINS
         .gte('fecha', startDate.toISOString())
+
+      if (allRegistrosError) throw allRegistrosError;
+
+      const enrichedAllRegistros = allRegistros.map(r => {
+        const pruebaInfo = pruebasMap.get(r.prueba_id);
+        return {
+          ...r,
+          metrica_nombre: metricasMap.get(r.metrica_id) || 'Desconocida',
+          distancia_valor: pruebaInfo ? distanciasMap.get(pruebaInfo.distancia_id) || 0 : 0,
+          estilo_nombre: pruebaInfo ? estilosMap.get(pruebaInfo.estilo_id) || 'Desconocido' : 'Desconocido'
+        };
+      });
 
       // Calcular promedios del equipo y del nadador
       const teamStats = new Map<string, { total: number, count: number }>()
       const swimmerStats = new Map<string, { total: number, count: number }>()
       
-      allRegistros?.forEach(registro => {
-        if (!registro.parametros || Array.isArray(registro.parametros)) return
-        if (registro.valor === null) return
+      enrichedAllRegistros.forEach(registro => {
+        if (!registro.metrica_nombre || registro.metrica_nombre === 'Desconocida' || registro.valor === null) return;
         
-        const metrica = registro.parametros.parametro
+        const metrica = registro.metrica_nombre
         const valor = typeof registro.valor === 'string' ? parseFloat(registro.valor) : registro.valor
         
         if (!teamStats.has(metrica)) {
@@ -241,39 +274,33 @@ export function useSwimmerDetail(swimmerId: string): UseSwimmerDetailReturn {
         }
       })
 
-      // Generar comparaciones
-      const comparisons: TeamComparison[] = []
-      
-      swimmerStats.forEach((swimmerStat, metrica) => {
-        const teamStat = teamStats.get(metrica)
-        if (!teamStat || teamStat.count === 0) return
-        
-        const metricDef = METRICS_DEFINITIONS.find(m => m.parametro === metrica)
-        if (!metricDef) return
-        
-        const swimmerAvg = swimmerStat.total / swimmerStat.count
-        const teamAvg = teamStat.total / teamStat.count
-        
-        // Para tiempo, menor es mejor (diferencia negativa es buena)
-        // Para el resto, mayor es mejor (diferencia positiva es buena)
-        const isTimeBased = metrica.includes('T ') || metrica.includes('T15') || metrica.includes('T25') || metrica === 'T TOTAL'
-        const percentDiff = isTimeBased
-          ? ((teamAvg - swimmerAvg) / teamAvg) * 100
-          : ((swimmerAvg - teamAvg) / teamAvg) * 100
-        
-        comparisons.push({
-          metrica,
-          label: metricDef.label,
-          swimmerValue: swimmerAvg,
-          teamAverage: teamAvg,
-          percentDiff,
-          unit: metricDef.unit
-        })
-      })
+      const teamComparisonsResult = Array.from(swimmerStats.entries()).map(([metrica, swimmerStat]) => {
+        const teamStat = teamStats.get(metrica);
+        if (!teamStat || teamStat.count <= 1) return null;
 
-      // Ordenar por diferencia (mejores primero)
-      comparisons.sort((a, b) => b.percentDiff - a.percentDiff)
-      setTeamComparisons(comparisons)
+        const teamAverage = teamStat.total / teamStat.count;
+        const swimmerAverage = swimmerStat.total / swimmerStat.count;
+        
+        const isTimeBased = metrica.toLowerCase().includes('tiempo') || metrica.startsWith('T');
+        const percentDiff = isTimeBased
+          ? ((teamAverage - swimmerAverage) / teamAverage) * 100
+          : ((swimmerAverage - teamAverage) / teamAverage) * 100;
+
+        const metricDef = METRICS_DEFINITIONS.find(m => m.parametro === metrica);
+
+        return {
+          metrica,
+          label: metricDef?.label || metrica,
+          swimmerValue: swimmerAverage,
+          teamAverage: teamAverage,
+          percentDiff,
+          unit: metricDef?.unit || ''
+        };
+      }).filter((c): c is TeamComparison => c !== null);
+
+      // Ordenar por la magnitud de la diferencia y tomar el top 5
+      teamComparisonsResult.sort((a, b) => Math.abs(b.percentDiff) - Math.abs(a.percentDiff));
+      setTeamComparisons(teamComparisonsResult.slice(0, 5));
 
     } catch (err) {
       console.error('Error fetching swimmer data:', err)

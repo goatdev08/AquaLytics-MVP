@@ -116,9 +116,9 @@ export async function getFases() {
  */
 export async function getParametros() {
   const { data, error } = await supabase
-    .from('parametros')
+    .from('metricas')
     .select('*')
-    .order('parametro_id')
+    .order('metrica_id')
   
   if (error) throw error
   return data
@@ -129,10 +129,10 @@ export async function getParametros() {
  */
 export async function getParametrosPorTipo(tipo: 'M' | 'A') {
   const { data, error } = await supabase
-    .from('parametros')
+    .from('metricas')
     .select('*')
     .eq('tipo', tipo)
-    .order('parametro_id')
+    .order('metrica_id')
   
   if (error) throw error
   return data
@@ -160,7 +160,7 @@ export async function getRegistrosCompletos(filtros?: {
       distancia:distancias!inner(distancia_id, distancia),
       estilo:estilos!inner(estilo_id, estilo),
       fase:fases!inner(fase_id, fase),
-      parametro:parametros!inner(parametro_id, parametro, tipo)
+      metricas!inner(metrica_id, nombre, tipo)
     `)
     .order('fecha', { ascending: false })
   
@@ -196,6 +196,57 @@ export async function getRegistrosCompletos(filtros?: {
   return data
 }
 
+// ====== FUNCIONES DE MÉTRICAS ======
+/**
+ * Obtiene todas las métricas del sistema
+ */
+export async function obtenerMetricas() {
+  const { data, error } = await supabase
+    .from('metricas')
+    .select('*')
+    .order('metrica_id')
+  
+  if (error) throw error
+  return data
+}
+
+/**
+ * Obtiene métricas filtradas por tipo
+ */
+export async function obtenerMetricasPorTipo(tipo: 'M' | 'A') {
+  const { data, error } = await supabase
+    .from('metricas')
+    .select('*')
+    .eq('tipo', tipo)
+    .order('metrica_id')
+  
+  if (error) throw error
+  return data
+}
+
+// ====== FUNCIONES DE REGISTROS ======
+/**
+ * Obtiene todos los registros con información completa
+ */
+export async function obtenerRegistrosCompletos() {
+  const { data, error } = await supabase
+    .from('registros')
+    .select(`
+      *,
+      nadadores!inner(id_nadador, nombre, edad, peso),
+      competencias(competencia_id, competencia, periodo),
+      distancias!inner(distancia_id, distancia),
+      estilos!inner(estilo_id, nombre),
+      fases!inner(fase_id, nombre),
+      metricas!inner(metrica_id, nombre, tipo)
+    `)
+    .order('fecha', { ascending: false })
+    .order('registro_id')
+  
+  if (error) throw error
+  return data
+}
+
 /**
  * Crea un nuevo registro
  */
@@ -203,10 +254,9 @@ export async function crearRegistro(registro: {
   competencia_id?: number
   fecha?: string
   id_nadador?: number
-  distancia_id?: number
-  estilo_id?: number
+  prueba_id?: number
   fase_id?: number
-  parametro_id?: number
+  metrica_id?: number
   segmento?: number
   valor?: number
 }) {
@@ -227,10 +277,9 @@ export async function crearRegistrosLote(registros: Array<{
   competencia_id?: number
   fecha?: string
   id_nadador?: number
-  distancia_id?: number
-  estilo_id?: number
+  prueba_id?: number
   fase_id?: number
-  parametro_id?: number
+  metrica_id?: number
   segmento?: number
   valor?: number
 }>) {
@@ -252,10 +301,9 @@ export async function actualizarRegistro(
     competencia_id?: number
     fecha?: string
     id_nadador?: number
-    distancia_id?: number
-    estilo_id?: number
+    prueba_id?: number
     fase_id?: number
-    parametro_id?: number
+    metrica_id?: number
     segmento?: number
     valor?: number
   }

@@ -194,6 +194,7 @@ const Select = forwardRef<HTMLDivElement, SelectProps>(
     const selectRef = useRef<HTMLDivElement>(null)
     const buttonRef = useRef<HTMLButtonElement>(null)
     const listRef = useRef<HTMLUListElement>(null)
+    const dropdownWrapperRef = useRef<HTMLDivElement>(null)
     
     // Determine actual state based on props
     const actualState = error ? 'error' : success ? 'success' : warning ? 'warning' : state
@@ -277,6 +278,19 @@ const Select = forwardRef<HTMLDivElement, SelectProps>(
       setFocusedIndex(-1)
       onChange?.(option.value, option)
       buttonRef.current?.focus()
+    }
+
+    // Prevent events from bubbling up
+    const handleSelectClick = (event: React.MouseEvent) => {
+      event.stopPropagation();
+      if (!disabled && !loading) {
+        setIsOpen(!isOpen);
+      }
+    }
+
+    // Ensure dropdown stays on top of other elements
+    const handleDropdownClick = (event: React.MouseEvent) => {
+      event.stopPropagation();
     }
     
     const baseSelectClasses = [
@@ -378,7 +392,7 @@ const Select = forwardRef<HTMLDivElement, SelectProps>(
               isOpen && 'ring-2 ring-phoenix-red/20'
             )}
             disabled={disabled || loading}
-            onClick={() => !disabled && !loading && setIsOpen(!isOpen)}
+            onClick={handleSelectClick}
             onKeyDown={handleKeyDown}
             aria-haspopup="listbox"
             aria-expanded={isOpen}
@@ -406,50 +420,71 @@ const Select = forwardRef<HTMLDivElement, SelectProps>(
           
           {/* Dropdown */}
           {isOpen && !disabled && !loading && (
-            <ul
-              ref={listRef}
-              id={listId}
-              className={cn(
-                'absolute z-50 mt-1 w-full bg-card border border-border rounded-lg shadow-lg',
-                'max-h-60 overflow-auto py-1',
-                'phoenix-shadow-lg'
-              )}
-              role="listbox"
-              aria-labelledby={selectId}
+            <div 
+              ref={dropdownWrapperRef} 
+              onClick={handleDropdownClick}
+              style={{ 
+                position: 'absolute', 
+                width: '100%', 
+                zIndex: 999999, 
+                marginTop: '4px',
+                pointerEvents: 'auto',
+              }}
             >
-              {options.map((option, index) => (
-                <li
-                  key={option.value}
-                  className={cn(
-                    'px-4 py-2 cursor-pointer text-sm transition-colors duration-150',
-                    'hover:bg-phoenix-red/10 hover:text-phoenix-red',
-                    'flex items-center justify-between',
-                    focusedIndex === index && 'bg-phoenix-red/10 text-phoenix-red',
-                    selectedValue === option.value && 'bg-phoenix-red/5 text-phoenix-red font-medium',
-                    option.disabled && 'opacity-50 cursor-not-allowed'
-                  )}
-                  role="option"
-                  aria-selected={selectedValue === option.value}
-                  onClick={() => selectOption(option)}
-                  onMouseEnter={() => setFocusedIndex(index)}
-                >
-                  <div className="flex flex-col">
-                    <span className="block truncate">
-                      {option.label}
-                    </span>
-                    {option.description && (
-                      <span className="text-xs text-muted-foreground mt-0.5">
-                        {option.description}
-                      </span>
+              <ul
+                ref={listRef}
+                id={listId}
+                className={cn(
+                  'w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl',
+                  'max-h-80 overflow-auto py-1',
+                  'ring-1 ring-black ring-opacity-5'
+                )}
+                role="listbox"
+                aria-labelledby={selectId}
+                style={{
+                  backdropFilter: 'none',
+                  WebkitBackdropFilter: 'none',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+                }}
+              >
+                {options.map((option, index) => (
+                  <li
+                    key={option.value}
+                    className={cn(
+                      'px-4 py-2 cursor-pointer text-sm transition-colors duration-150',
+                      'hover:bg-phoenix-red/10 hover:text-phoenix-red',
+                      'flex items-center justify-between',
+                      focusedIndex === index && 'bg-phoenix-red/10 text-phoenix-red',
+                      selectedValue === option.value && 'bg-phoenix-red/5 text-phoenix-red font-medium',
+                      option.disabled && 'opacity-50 cursor-not-allowed'
                     )}
-                  </div>
-                  
-                  {selectedValue === option.value && (
-                    <CheckIcon />
-                  )}
-                </li>
-              ))}
-            </ul>
+                    role="option"
+                    aria-selected={selectedValue === option.value}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      selectOption(option);
+                    }}
+                    onMouseEnter={() => setFocusedIndex(index)}
+                  >
+                    <div className="flex flex-col">
+                      <span className="block truncate">
+                        {option.label}
+                      </span>
+                      {option.description && (
+                        <span className="text-xs text-muted-foreground mt-0.5">
+                          {option.description}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {selectedValue === option.value && (
+                      <CheckIcon />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
         

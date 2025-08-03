@@ -69,13 +69,14 @@ export async function GET() {
         },
         registros_ejemplo: registrosEjemplo.map(registro => ({
           registro_id: registro.registro_id,
-          nadador: registro.nadador?.nombre,
-          competencia: registro.competencia?.competencia,
-          distancia: registro.distancia?.distancia,
-          estilo: registro.estilo?.estilo,
-          fase: registro.fase?.fase,
-          parametro: registro.parametro?.parametro,
-          tipo: registro.parametro?.tipo,
+          nadador: registro.nadador?.nombre || 'N/A',
+          competencia: registro.competencia?.competencia || 'N/A',
+          // TODO: Corregir JOINs según esquema DB real (registros -> pruebas -> distancias/estilos)
+          distancia: 'N/A', // registro.distancia?.distancia (relación incorrecta)
+          estilo: 'N/A', // registro.estilo?.estilo (relación incorrecta)
+          fase: 'N/A', // registro.fase?.fase (relación incorrecta)
+          parametro: 'N/A', // registro.metrica?.nombre (relación incorrecta) 
+          tipo: 'N/A', // registro.metrica?.tipo (relación incorrecta)
           segmento: registro.segmento,
           valor: registro.valor,
           fecha: registro.fecha

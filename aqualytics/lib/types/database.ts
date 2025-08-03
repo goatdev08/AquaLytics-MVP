@@ -1,10 +1,3 @@
-/**
- * Tipos de base de datos para AquaLytics
- * Generados desde Supabase y extendidos para compatibilidad
- */
-
-// ===== TIPOS GENERADOS DESDE SUPABASE =====
-
 export type Json =
   | string
   | number
@@ -51,31 +44,52 @@ export type Database = {
       }
       estilos: {
         Row: {
-          estilo: string
           estilo_id: number
+          nombre: string
         }
         Insert: {
-          estilo: string
           estilo_id?: number
+          nombre: string
         }
         Update: {
-          estilo?: string
           estilo_id?: number
+          nombre?: string
         }
         Relationships: []
       }
       fases: {
         Row: {
-          fase: string
           fase_id: number
+          nombre: string
         }
         Insert: {
-          fase: string
           fase_id?: number
+          nombre: string
         }
         Update: {
-          fase?: string
           fase_id?: number
+          nombre?: string
+        }
+        Relationships: []
+      }
+      metricas: {
+        Row: {
+          global: boolean | null
+          metrica_id: number
+          nombre: string
+          tipo: string
+        }
+        Insert: {
+          global?: boolean | null
+          metrica_id?: number
+          nombre: string
+          tipo: string
+        }
+        Update: {
+          global?: boolean | null
+          metrica_id?: number
+          nombre?: string
+          tipo?: string
         }
         Relationships: []
       }
@@ -100,63 +114,84 @@ export type Database = {
         }
         Relationships: []
       }
-      parametros: {
+      pruebas: {
         Row: {
-          global: boolean | null
-          parametro: string
-          parametro_id: number
-          tipo: string
+          curso: string
+          distancia_id: number
+          estilo_id: number
+          id: number
+          nombre: string
         }
         Insert: {
-          global?: boolean | null
-          parametro: string
-          parametro_id?: number
-          tipo: string
+          curso: string
+          distancia_id: number
+          estilo_id: number
+          id?: number
+          nombre: string
         }
         Update: {
-          global?: boolean | null
-          parametro?: string
-          parametro_id?: number
-          tipo?: string
+          curso?: string
+          distancia_id?: number
+          estilo_id?: number
+          id?: number
+          nombre?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pruebas_distancia_id_fkey"
+            columns: ["distancia_id"]
+            isOneToOne: false
+            referencedRelation: "distancias"
+            referencedColumns: ["distancia_id"]
+          },
+          {
+            foreignKeyName: "pruebas_estilo_id_fkey"
+            columns: ["estilo_id"]
+            isOneToOne: false
+            referencedRelation: "estilos"
+            referencedColumns: ["estilo_id"]
+          },
+        ]
       }
       registros: {
         Row: {
           competencia_id: number | null
-          distancia_id: number | null
-          estilo_id: number | null
+          created_at: string | null
           fase_id: number | null
-          fecha: string | null
-          id_nadador: number | null
-          parametro_id: number | null
+          fecha: string
+          id_nadador: number
+          metrica_id: number
+          prueba_id: number
           registro_id: number
           segmento: number | null
-          valor: number | null
+          updated_at: string | null
+          valor: number
         }
         Insert: {
           competencia_id?: number | null
-          distancia_id?: number | null
-          estilo_id?: number | null
+          created_at?: string | null
           fase_id?: number | null
-          fecha?: string | null
-          id_nadador?: number | null
-          parametro_id?: number | null
+          fecha: string
+          id_nadador: number
+          metrica_id: number
+          prueba_id: number
           registro_id?: number
           segmento?: number | null
-          valor?: number | null
+          updated_at?: string | null
+          valor: number
         }
         Update: {
           competencia_id?: number | null
-          distancia_id?: number | null
-          estilo_id?: number | null
+          created_at?: string | null
           fase_id?: number | null
-          fecha?: string | null
-          id_nadador?: number | null
-          parametro_id?: number | null
+          fecha?: string
+          id_nadador?: number
+          metrica_id?: number
+          prueba_id?: number
           registro_id?: number
           segmento?: number | null
-          valor?: number | null
+          updated_at?: string | null
+          valor?: number
         }
         Relationships: [
           {
@@ -165,20 +200,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "competencias"
             referencedColumns: ["competencia_id"]
-          },
-          {
-            foreignKeyName: "registros_distancia_id_fkey"
-            columns: ["distancia_id"]
-            isOneToOne: false
-            referencedRelation: "distancias"
-            referencedColumns: ["distancia_id"]
-          },
-          {
-            foreignKeyName: "registros_estilo_id_fkey"
-            columns: ["estilo_id"]
-            isOneToOne: false
-            referencedRelation: "estilos"
-            referencedColumns: ["estilo_id"]
           },
           {
             foreignKeyName: "registros_fase_id_fkey"
@@ -195,171 +216,19 @@ export type Database = {
             referencedColumns: ["id_nadador"]
           },
           {
-            foreignKeyName: "registros_parametro_id_fkey"
-            columns: ["parametro_id"]
+            foreignKeyName: "registros_metrica_id_fkey"
+            columns: ["metrica_id"]
             isOneToOne: false
-            referencedRelation: "parametros"
-            referencedColumns: ["parametro_id"]
-          },
-        ]
-      }
-      pruebas: {
-        Row: {
-          id: number
-          nombre: string
-          distancia_id: number
-          estilo_id: number
-          curso: 'largo' | 'corto'
-          tramos_totales: number | null
-          distancia_por_tramo: number | null
-        }
-        Insert: {
-          id?: number
-          nombre: string
-          distancia_id: number
-          estilo_id: number
-          curso: 'largo' | 'corto'
-          tramos_totales?: number | null
-          distancia_por_tramo?: number | null
-        }
-        Update: {
-          id?: number
-          nombre?: string
-          distancia_id?: number
-          estilo_id?: number
-          curso?: 'largo' | 'corto'
-          tramos_totales?: number | null
-          distancia_por_tramo?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pruebas_distancia_id_fkey"
-            columns: ["distancia_id"]
-            isOneToOne: false
-            referencedRelation: "distancias"
-            referencedColumns: ["distancia_id"]
+            referencedRelation: "metricas"
+            referencedColumns: ["metrica_id"]
           },
           {
-            foreignKeyName: "pruebas_estilo_id_fkey"
-            columns: ["estilo_id"]
-            isOneToOne: false
-            referencedRelation: "estilos"
-            referencedColumns: ["estilo_id"]
-          }
-        ]
-      }
-      registros_completos: {
-        Row: {
-          id: number
-          id_nadador: number
-          prueba_id: number
-          competencia_id: number | null
-          fecha: string
-          fase_id: number | null
-          // Métricas manuales (10)
-          t15_1: number | null
-          brz_1: number | null
-          t25_1: number | null
-          f1: number | null
-          t15_2: number | null
-          brz_2: number | null
-          t25_2: number | null
-          f2: number | null
-          t_total: number | null
-          brz_total: number | null
-          // Métricas calculadas (6)
-          velocidad_promedio: number | null
-          ritmo_brazada: number | null
-          eficiencia_nado: number | null
-          consistencia_tramos: number | null
-          indice_fatiga: number | null
-          potencia_relativa: number | null
-          // Metadata
-          completitud_porcentaje: number
-          metricas_registradas: number
-          metodo_registro: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          id_nadador: number
-          prueba_id: number
-          competencia_id?: number | null
-          fecha: string
-          fase_id?: number | null
-          // Métricas manuales (opcionales en insert)
-          t15_1?: number | null
-          brz_1?: number | null
-          t25_1?: number | null
-          f1?: number | null
-          t15_2?: number | null
-          brz_2?: number | null
-          t25_2?: number | null
-          f2?: number | null
-          t_total?: number | null
-          brz_total?: number | null
-          // Metadata
-          completitud_porcentaje?: number
-          metricas_registradas?: number
-          metodo_registro?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          id_nadador?: number
-          prueba_id?: number
-          competencia_id?: number | null
-          fecha?: string
-          fase_id?: number | null
-          // Métricas manuales
-          t15_1?: number | null
-          brz_1?: number | null
-          t25_1?: number | null
-          f1?: number | null
-          t15_2?: number | null
-          brz_2?: number | null
-          t25_2?: number | null
-          f2?: number | null
-          t_total?: number | null
-          brz_total?: number | null
-          // Metadata
-          completitud_porcentaje?: number
-          metricas_registradas?: number
-          metodo_registro?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "registros_completos_id_nadador_fkey"
-            columns: ["id_nadador"]
-            isOneToOne: false
-            referencedRelation: "nadadores"
-            referencedColumns: ["id_nadador"]
-          },
-          {
-            foreignKeyName: "registros_completos_prueba_id_fkey"
+            foreignKeyName: "registros_prueba_id_fkey"
             columns: ["prueba_id"]
             isOneToOne: false
             referencedRelation: "pruebas"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "registros_completos_competencia_id_fkey"
-            columns: ["competencia_id"]
-            isOneToOne: false
-            referencedRelation: "competencias"
-            referencedColumns: ["competencia_id"]
-          },
-          {
-            foreignKeyName: "registros_completos_fase_id_fkey"
-            columns: ["fase_id"]
-            isOneToOne: false
-            referencedRelation: "fases"
-            referencedColumns: ["fase_id"]
-          }
         ]
       }
     }
@@ -367,7 +236,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_completitud_porcentaje: {
+        Args: {
+          p_t15_1: number
+          p_brz_1: number
+          p_t25_1: number
+          p_f1: number
+          p_t15_2: number
+          p_brz_2: number
+          p_t25_2: number
+          p_f2: number
+          p_t_total: number
+          p_brz_total: number
+        }
+        Returns: number
+      }
+      get_complete_test_record: {
+        Args: { p_prueba_id: number; p_nadador_id: number; p_fecha: string }
+        Returns: Json
+      }
+      schedule_maintenance: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
@@ -378,295 +269,100 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+/**
+ * Tipos derivados para el frontend
+ */
 
-export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
+// Define el tipo base para las tablas de la base de datos
+export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
 
-export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
-
-export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
-
-// ===== TIPOS CONVENIENCE (COMPATIBILIDAD HACIA ATRÁS) =====
-
+// Tipos específicos para las entidades principales
 export type Nadador = Tables<'nadadores'>
 export type Competencia = Tables<'competencias'>
-export type Distancia = Tables<'distancias'>
-export type Estilo = Tables<'estilos'>
-export type Fase = Tables<'fases'>
-export type Parametro = Tables<'parametros'>
-export type Registro = Tables<'registros'>
 export type Prueba = Tables<'pruebas'>
-export type RegistroCompletoTabla = Tables<'registros_completos'>
+export type Metrica = Tables<'metricas'>
+export type Registro = Tables<'registros'>
+export type Fase = Tables<'fases'>
+export type Estilo = Tables<'estilos'>
+export type Distancia = Tables<'distancias'>
 
-export type NuevoNadador = TablesInsert<'nadadores'>
-export type NuevaCompetencia = TablesInsert<'competencias'>
-export type NuevoRegistro = TablesInsert<'registros'>
-export type NuevaPrueba = TablesInsert<'pruebas'>
-export type NuevoRegistroCompletoTabla = TablesInsert<'registros_completos'>
-
-// ===== ENUMS PARA NUEVAS TABLAS =====
-
-export enum Curso {
-  Largo = 'largo',
-  Corto = 'corto'
+// Tipo para el payload de una competencia con información adicional
+export interface CompetitionWithDetails extends Competencia {
+  total_swimmers: number
+  total_races: number
+  fastest_time: number | null
+  average_time: number | null
 }
 
-export enum MetodoRegistro {
-  Manual = 'manual',
-  Electronico = 'electronico',
-  VideoAnalisis = 'video_analisis',
-  Cronometro = 'cronometro',
-  ManualCorregido = 'manual_corregido'
+// Tipo para el resumen de rendimiento de un nadador
+export interface SwimmerPerformanceSummary {
+  total_competitions: number
+  total_races: number
+  total_records: number
+  last_competition_date: string | null
 }
 
-// ===== TIPOS EXTENDIDOS CON RELACIONES =====
-
-export interface RegistroCompleto extends Registro {
-  nadador?: Nadador
-  competencia?: Competencia
-  distancia?: Distancia
-  estilo?: Estilo
-  fase?: Fase
-  parametro?: Parametro
+// Tipo para los filtros de datos
+export interface DataFilters {
+  swimmerId?: number
+  competitionId?: number
+  distance?: number
+  stroke?: string
+  startDate?: string
+  endDate?: string
 }
 
-export interface NadadorConRegistros extends Nadador {
-  registros?: Registro[]
-  totalRegistros?: number
-  ultimaParticipacion?: string
+// Tipo para el resultado de la función `get_complete_test_record`
+export type CompleteTestRecord = {
+  prueba_id: number;
+  nadador_id: number;
+  fecha: string;
+  manual_metrics: Record<string, number>;
+  auto_metrics: Record<string, number>;
 }
 
-export interface CompetenciaConRegistros extends Competencia {
-  registros?: Registro[]
-  totalNadadores?: number
-  totalRegistros?: number
+// Tipo para el resultado de la función `fn_get_rankings_data`
+export interface RankingData {
+  nadador_id: number
+  nombre_nadador: string
+  competencia_id: number
+  nombre_competencia: string
+  prueba_id: number
+  nombre_prueba: string
+  fecha: string
+  tiempo_total: number
+  velocidad_promedio: number
+  ranking_competencia: number
+  ranking_general: number
 }
 
-export interface PruebaConInfo extends Prueba {
-  distancia?: Distancia
-  estilo?: Estilo
-  registrosCompletos?: RegistroCompletoTabla[]
+// Tipo para el resumen de una competencia
+export interface CompetitionSummary {
+  id: number
+  name: string
+  date: string
+  totalSwimmers: number
+  totalRaces: number
+  fastestTime: number | null
+  averageTime: number | null
+  improvementRate: number
 }
 
-export interface RegistroCompletoConRelaciones extends RegistroCompletoTabla {
-  nadador?: Nadador
-  prueba?: PruebaConInfo
-  competencia?: Competencia
-  fase?: Fase
+// Tipo para el resumen del equipo
+export interface TeamSummary {
+  totalSwimmers: number
+  activeSwimmers: number
+  totalCompetitions: number
+  recordsInPeriod: number
+  improvementRate: number
+  averageTime: number | null
 }
 
-// ===== TIPOS PARA ANÁLISIS Y MÉTRICAS =====
-
-export interface MetricaAnalisis {
-  parametro: string
-  tipo: 'M' | 'A'
-  valor: number
-  segmento?: number | null
-  fecha?: string | null
-  unidad?: string
-  descripcion?: string
+// Nuevo tipo para el payload de la API de competiciones
+export type CompetitionDataPayload = {
+  competencia_id: number;
+  competencia: string;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  tiempo_promedio_general: number | null;
 }
-
-export interface RendimientoNadador {
-  nadador: Nadador
-  competencia: Competencia
-  distancia: Distancia
-  estilo: Estilo
-  fase: Fase
-  metricas: MetricaAnalisis[]
-  fecha?: string | null
-  tiempoTotal?: number
-  velocidadPromedio?: number
-}
-
-export interface ComparativaRendimiento {
-  nadador1: RendimientoNadador
-  nadador2: RendimientoNadador
-  diferencias: {
-    parametro: string
-    diferencia: number
-    porcentaje: number
-    mejora?: 'nadador1' | 'nadador2'
-  }[]
-}
-
-// ===== TIPOS PARA FILTROS Y BÚSQUEDAS =====
-
-export interface FiltroRegistros {
-  nadador_id?: number
-  competencia_id?: number
-  distancia_id?: number
-  estilo_id?: number
-  fase_id?: number
-  fecha_desde?: string
-  fecha_hasta?: string
-  parametros?: number[]
-  tipo_parametro?: 'M' | 'A' | 'all'
-  limite?: number
-  offset?: number
-}
-
-export interface ResultadoBusqueda<T> {
-  data: T[]
-  total: number
-  pagina: number
-  limite: number
-  totalPaginas: number
-}
-
-// ===== CONSTANTES Y TIPOS LITERALES =====
-
-export const DISTANCIAS_DISPONIBLES = [25, 50, 100, 200, 400, 800, 1500] as const
-export const ESTILOS_DISPONIBLES = ['Crol', 'Dorso', 'Pecho', 'Mariposa', 'Combinado'] as const
-export const FASES_DISPONIBLES = ['PRELIMINAR', 'SEMIFINAL', 'FINAL'] as const
-export const TIPOS_PARAMETRO = ['M', 'A'] as const
-
-export type DistanciaValida = typeof DISTANCIAS_DISPONIBLES[number]
-export type EstiloValido = typeof ESTILOS_DISPONIBLES[number]
-export type FaseValida = typeof FASES_DISPONIBLES[number]
-export type TipoParametro = typeof TIPOS_PARAMETRO[number]
-
-// ===== TIPOS PARA MÉTRICAS ESPECÍFICAS DE NATACIÓN =====
-
-export interface MetricaDefinicion {
-  parametro_id: number
-  nombre: string
-  descripcion: string
-  unidad: string
-  tipo: TipoParametro
-  segmento_especifico: boolean
-  global: boolean
-  formula?: string
-}
-
-// Métricas manuales según el PRD
-export const METRICAS_MANUALES: Readonly<MetricaDefinicion[]> = [
-  { parametro_id: 1, nombre: 'T15 (1)', descripcion: 'Tiempo 15m (Primer Segmento)', unidad: 'seg', tipo: 'M', segmento_especifico: true, global: false },
-  { parametro_id: 2, nombre: '# de BRZ 1', descripcion: 'Brazadas (Primer Segmento)', unidad: 'brazadas', tipo: 'M', segmento_especifico: true, global: false },
-  { parametro_id: 3, nombre: 'T25 (1)', descripcion: 'Tiempo 25m (Primer Segmento)', unidad: 'seg', tipo: 'M', segmento_especifico: true, global: false },
-  { parametro_id: 4, nombre: 'F1', descripcion: 'Flecha (Primer Segmento)', unidad: 'metros', tipo: 'M', segmento_especifico: true, global: false },
-  { parametro_id: 5, nombre: 'T15 (2)', descripcion: 'Tiempo 15m (Segundo Segmento)', unidad: 'seg', tipo: 'M', segmento_especifico: true, global: false },
-  { parametro_id: 6, nombre: '# de BRZ 2', descripcion: 'Brazadas (Segundo Segmento)', unidad: 'brazadas', tipo: 'M', segmento_especifico: true, global: false },
-  { parametro_id: 7, nombre: 'T25 (2)', descripcion: 'Tiempo 25m (Segundo Segmento)', unidad: 'seg', tipo: 'M', segmento_especifico: true, global: false },
-  { parametro_id: 8, nombre: 'F2', descripcion: 'Flecha (Segundo Segmento)', unidad: 'metros', tipo: 'M', segmento_especifico: true, global: false },
-  { parametro_id: 9, nombre: 'T TOTAL', descripcion: 'Tiempo Total', unidad: 'seg', tipo: 'M', segmento_especifico: false, global: true },
-  { parametro_id: 10, nombre: '# de BRZ TOTAL', descripcion: 'Total de Brazadas', unidad: 'brazadas', tipo: 'M', segmento_especifico: false, global: true }
-] as const
-
-// Métricas automáticas según el PRD
-export const METRICAS_AUTOMATICAS: Readonly<MetricaDefinicion[]> = [
-  { parametro_id: 11, nombre: 'V1', descripcion: 'Velocidad (Primer Segmento)', unidad: 'm/s', tipo: 'A', segmento_especifico: true, global: false, formula: '25 / T25(1)' },
-  { parametro_id: 12, nombre: 'V2', descripcion: 'Velocidad (Segundo Segmento)', unidad: 'm/s', tipo: 'A', segmento_especifico: true, global: false, formula: '25 / T25(2)' },
-  { parametro_id: 13, nombre: 'V promedio', descripcion: 'Velocidad Promedio', unidad: 'm/s', tipo: 'A', segmento_especifico: false, global: true, formula: '50 / T_TOTAL' },
-  { parametro_id: 14, nombre: 'DIST x BRZ', descripcion: 'Distancia por Brazada', unidad: 'm/brazada', tipo: 'A', segmento_especifico: false, global: true, formula: '50 / BRZ_TOTAL' },
-  { parametro_id: 15, nombre: 'DIST sin F', descripcion: 'Distancia sin Flecha', unidad: 'metros', tipo: 'A', segmento_especifico: false, global: true, formula: '50 - (F1 + F2)' },
-  { parametro_id: 16, nombre: 'F promedio', descripcion: 'Promedio de Flecha', unidad: 'metros', tipo: 'A', segmento_especifico: false, global: true, formula: '(F1 + F2) / 2' }
-] as const
-
-// Todas las métricas combinadas
-export const TODAS_LAS_METRICAS = [...METRICAS_MANUALES, ...METRICAS_AUTOMATICAS] as const
-
-// ===== HELPER FUNCTIONS PARA TIPOS =====
-
-/**
- * Función para obtener definición de métrica por ID
- */
-export function obtenerMetricaPorId(id: number): MetricaDefinicion | undefined {
-  return TODAS_LAS_METRICAS.find(metrica => metrica.parametro_id === id)
-}
-
-/**
- * Función para obtener métricas por tipo
- */
-export function obtenerMetricasPorTipo(tipo: TipoParametro): readonly MetricaDefinicion[] {
-  return tipo === 'M' ? METRICAS_MANUALES : METRICAS_AUTOMATICAS
-}
-
-/**
- * Función para validar si una distancia es válida
- */
-export function esDistanciaValida(distancia: number): distancia is DistanciaValida {
-  return DISTANCIAS_DISPONIBLES.includes(distancia as DistanciaValida)
-}
-
-/**
- * Función para validar si un estilo es válido
- */
-export function esEstiloValido(estilo: string): estilo is EstiloValido {
-  return ESTILOS_DISPONIBLES.includes(estilo as EstiloValido)
-}
-
-// ===== EXPORT TYPES PARA SUPABASE CLIENT =====
-
-export type SupabaseDatabase = Database
-export type SupabaseSchema = Database['public']
-export type SupabaseTables = SupabaseSchema['Tables']
-
- 

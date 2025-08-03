@@ -1,13 +1,23 @@
 /**
- * Archivo central de exportación de tipos - AquaLytics
- * Exporta todos los tipos TypeScript de la aplicación
+ * AquaLytics - Type Definitions
+ *
+ * Este archivo sirve como el punto central para exportar todos los tipos
+ * de datos utilizados en la aplicación. Re-exporta tipos desde archivos
+ * específicos para mantener el código organizado y los imports consistentes.
  */
+
+/**
+ * Tipos Centralizados de AquaLytics
+ * Este archivo exporta todos los tipos de datos clave derivados
+ * de la base de datos para ser usados en toda la aplicación.
+ */
+
+import type { Database } from './database'
 
 // ===== EXPORTAR TIPOS DE BASE DE DATOS =====
 export type {
   // Tipos base de Supabase
   Json,
-  Database,
   Tables,
   TablesInsert,
   TablesUpdate,
@@ -348,5 +358,67 @@ export type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
   SelectHTMLAttributes,
-  FormHTMLAttributes
-} from 'react' 
+  FormHTMLAttributes,
+  TextareaHTMLAttributes
+} from 'react'
+
+// ===== TIPOS DE TABLAS BASE =====
+
+export type Nadador = Database['public']['Tables']['nadadores']['Row']
+export type Competencia = Database['public']['Tables']['competencias']['Row']
+export type Prueba = Database['public']['Tables']['pruebas']['Row']
+export type Fase = Database['public']['Tables']['fases']['Row']
+export type Estilo = Database['public']['Tables']['estilos']['Row']
+export type Distancia = Database['public']['Tables']['distancias']['Row']
+export type Registro = Database['public']['Tables']['registros']['Row']
+export type RegistroCompleto = Database['public']['Tables']['registros_completos']['Row']
+
+// ===== TIPOS DE VISTAS =====
+
+// Nota: Las vistas materializadas pueden no estar en los tipos generados por defecto.
+// Si `mv_swimmer_performance_summary` no está en `Database['public']['Views']`,
+// se debe añadir manualmente o regenerar los tipos para incluir vistas.
+// Por ahora, lo definimos explícitamente basado en su estructura.
+export type SwimmerPerformanceSummary = {
+  id_nadador: number
+  nombre: string | null
+  total_competencias: number | null
+  total_distancias: number | null
+  total_estilos: number | null
+  primera_competencia: string | null
+  ultima_competencia: string | null
+  total_registros: number | null
+  tiempo_promedio: number | null
+  velocidad_promedio: number | null
+}
+
+export type CompetitionStats = {
+    competencia_id: number
+    competencia: string | null
+    total_nadadores: number | null
+    total_pruebas: number | null
+    total_registros: number | null
+    fecha_inicio: string | null
+    fecha_fin: string | null
+    tiempo_promedio_general: number | null
+}
+
+// ===== TIPOS PARA FORMULARIOS Y API =====
+
+export interface SwimmerFormData {
+  nombre: string;
+  edad?: number | null;
+  peso?: number | null;
+}
+
+export interface CompetitionFormData {
+  competencia: string;
+  periodo: string;
+  competencia_id?: number;
+}
+
+// Puedes añadir más tipos compuestos o para la UI aquí 
+
+// Tipos de datos de la aplicación (modelos, formularios, etc.)
+export * from './database.types'
+export type { Metrica } from './database.types' 

@@ -1,174 +1,123 @@
 'use client'
 
+/**
+ * Página Principal de Análisis - AquaLytics
+ * Sistema completo de análisis para comparación de nadadores y rendimiento
+ */
+
 import React, { useState } from 'react'
 import MainLayout from '@/components/layout/MainLayout'
-import { METRIC_GROUPS } from '@/lib/utils/metrics-mapping'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { SwimmerComparison } from './components/SwimmerComparison'
+import { SelfComparison } from './components/SelfComparison'
+import { PerformanceInsights } from './components/PerformanceInsights'
 
-// Componentes de tabs (los crearemos después)
-import OverviewTab from '@/components/analytics/OverviewTab'
-import ComparisonsTab from '@/components/analytics/ComparisonsTab'
-import RankingsTab from '@/components/analytics/RankingsTab'
-import EfficiencyTab from '@/components/analytics/EfficiencyTab'
+type AnalysisTab = 'comparison' | 'self' | 'insights'
 
-type TabType = 'overview' | 'comparisons' | 'rankings' | 'efficiency'
+const TABS = [
+  {
+    id: 'comparison' as AnalysisTab,
+    name: 'Comparación entre Nadadores',
+    description: 'Compara 2-4 nadadores en la misma prueba',
+    icon: (
+      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    )
+  },
+  {
+    id: 'self' as AnalysisTab,
+    name: 'Comparación Personal',
+    description: 'Compara el mismo nadador en diferentes fechas/fases',
+    icon: (
+      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+      </svg>
+    )
+  },
+  {
+    id: 'insights' as AnalysisTab,
+    name: 'Insights de Rendimiento',
+    description: 'Análisis avanzados y recomendaciones',
+    icon: (
+      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012-2z" />
+      </svg>
+    )
+  }
+] as const
 
 export default function AnalyticsPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('overview')
-
-  const tabs = [
-    {
-      id: 'overview' as TabType,
-      name: 'Overview del Equipo',
-      icon: '📊',
-      description: 'Estadísticas generales y % de mejora'
-    },
-    {
-      id: 'comparisons' as TabType, 
-      name: 'Comparaciones',
-      icon: '⚔️',
-      description: 'Compara nadadores en misma distancia/estilo'
-    },
-    {
-      id: 'rankings' as TabType,
-      name: 'Rankings', 
-      icon: '🏆',
-      description: 'Rankings por estilo y distancia'
-    },
-    {
-      id: 'efficiency' as TabType,
-      name: 'Eficiencia de Brazada',
-      icon: '🏊‍♂️', 
-      description: 'Análisis de eficiencia por estilo'
-    }
-  ]
+  const [activeTab, setActiveTab] = useState<AnalysisTab>('comparison')
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'overview':
-        return <OverviewTab />
-      case 'comparisons':
-        return <ComparisonsTab />
-      case 'rankings':
-        return <RankingsTab />
-      case 'efficiency':
-        return <EfficiencyTab />
+      case 'comparison':
+        return <SwimmerComparison />
+      case 'self':
+        return <SelfComparison />
+      case 'insights':
+        return <PerformanceInsights />
       default:
-        return <OverviewTab />
+        return null
     }
   }
 
   return (
     <MainLayout>
-      <div className="container mx-auto max-w-screen-2xl px-6 py-8">
-        {/* Header con gradiente Phoenix */}
-        <div className="mb-10 relative overflow-hidden rounded-2xl bg-gradient-to-br from-phoenix-red via-phoenix-orange to-phoenix-yellow p-8 phoenix-shadow-xl">
-          <div className="relative z-10">
-            <h1 className="text-5xl font-bold mb-4 text-white drop-shadow-lg">
-              Analytics Dashboard
-            </h1>
-            <p className="text-xl text-white/90 max-w-4xl leading-relaxed">
-              Análisis avanzado de rendimiento con filtros por tipo de métrica. 
-              Compara nadadores, visualiza progresión y obtén insights valiosos del equipo.
+      <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
+        {/* Header del Dashboard */}
+        <div className="flex items-center justify-between space-y-2">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-phoenix-red via-phoenix-orange to-phoenix-yellow bg-clip-text text-transparent">
+              Análisis de Rendimiento
+            </h2>
+            <p className="text-muted-foreground mt-2">
+              Compara nadadores y analiza progresión con insights detallados
             </p>
           </div>
-          {/* Patrón decorativo */}
-          <div className="absolute top-0 right-0 -mt-16 -mr-16 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 -mb-16 -ml-16 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
         </div>
 
-        {/* Filtros de métricas con diseño mejorado */}
-        <div className="mb-10 p-8 bg-card rounded-2xl border phoenix-shadow-warm phoenix-hover">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl phoenix-gradient flex items-center justify-center">
-              <span className="text-2xl">🎯</span>
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-foreground">
-                Filtros por Tipo de Métrica
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Selecciona el tipo de análisis que deseas realizar
-              </p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Object.entries(METRIC_GROUPS).map(([key, group]) => (
-              <div 
-                key={key} 
-                className="group p-5 bg-muted/30 hover:bg-muted/50 rounded-xl border border-border hover:border-phoenix-red/30 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer"
+        {/* Sistema de Tabs */}
+        <Card className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {TABS.map((tab) => (
+              <Button
+                key={tab.id}
+                variant={activeTab === tab.id ? 'phoenix' : 'outline'}
+                size="lg"
+                onClick={() => setActiveTab(tab.id)}
+                className={`h-auto p-4 flex flex-col items-start gap-2 transition-all duration-300 ${
+                  activeTab === tab.id 
+                    ? 'shadow-lg border-phoenix-orange/50 bg-gradient-to-br from-phoenix-red/10 to-phoenix-orange/10' 
+                    : 'hover:shadow-md hover:border-phoenix-orange/30'
+                }`}
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-phoenix-red/20 to-phoenix-orange/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-2xl">{group.icon}</span>
-                  </div>
-                  <h4 className="font-semibold text-foreground group-hover:text-phoenix-red transition-colors">
-                    {group.name}
-                  </h4>
-                </div>
-                <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-                  {group.description}
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-phoenix-orange">
-                    {group.metrics.length} métricas
-                  </span>
-                  <div className="w-6 h-6 rounded-full bg-phoenix-red/10 flex items-center justify-center group-hover:bg-phoenix-red/20 transition-colors">
-                    <svg className="w-3 h-3 text-phoenix-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Navigation Tabs mejorados */}
-        <div className="mb-8">
-          <div className="bg-card/50 backdrop-blur-sm rounded-xl p-1 phoenix-shadow">
-            <nav className="flex flex-wrap gap-1" aria-label="Tabs">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    relative px-6 py-4 rounded-lg font-medium transition-all duration-300
-                    flex items-center gap-3 group
-                    ${activeTab === tab.id
-                      ? 'bg-gradient-to-r from-phoenix-red to-phoenix-orange text-white shadow-lg scale-105'
-                      : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                    }
-                  `}
-                >
-                  <span className={`
-                    text-2xl transition-transform duration-300
-                    ${activeTab === tab.id ? 'scale-110' : 'group-hover:scale-110'}
-                  `}>
+                <div className="flex items-center gap-3 w-full">
+                  <div className={`p-2 rounded-lg ${
+                    activeTab === tab.id 
+                      ? 'bg-gradient-to-r from-phoenix-red to-phoenix-orange text-white' 
+                      : 'bg-muted text-muted-foreground'
+                  }`}>
                     {tab.icon}
-                  </span>
-                  <div className="text-left">
-                    <div className="font-semibold">{tab.name}</div>
-                    <div className={`
-                      text-xs font-normal transition-opacity duration-300
-                      ${activeTab === tab.id ? 'text-white/80' : 'text-muted-foreground opacity-80'}
-                    `}>
+                  </div>
+                  <div className="text-left flex-1">
+                    <div className="font-semibold text-sm">{tab.name}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
                       {tab.description}
                     </div>
                   </div>
-                  {activeTab === tab.id && (
-                    <div className="absolute inset-x-0 -bottom-1 h-0.5 bg-gradient-to-r from-phoenix-yellow to-phoenix-amber"></div>
-                  )}
-                </button>
-              ))}
-            </nav>
+                </div>
+              </Button>
+            ))}
           </div>
-        </div>
 
-        {/* Tab Content con animación */}
-        <div className="min-h-[600px] animate-in fade-in-50 duration-500">
-          {renderTabContent()}
-        </div>
+          {/* Contenido del Tab Activo */}
+          <div className="min-h-[400px]">
+            {renderTabContent()}
+          </div>
+        </Card>
       </div>
     </MainLayout>
   )

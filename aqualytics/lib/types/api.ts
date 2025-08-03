@@ -9,11 +9,10 @@ import {
   Distancia, 
   Estilo, 
   Fase, 
-  Parametro, 
+  Metrica, 
   Registro,
-  RegistroCompleto,
-  FiltroRegistros
-} from './database'
+  RegistroCompleto
+} from './database.types'
 
 import { 
   MetricFormData, 
@@ -144,7 +143,15 @@ export interface CreateMetricRecordResponse extends ApiResponse<{
   }
 }> {}
 
-export interface GetRecordsRequest extends FiltroRegistros {}
+export interface MetricFilterParams {
+  swimmer_id?: number;
+  competition_id?: number;
+  distance_id?: number;
+  stroke_id?: number;
+  date_from?: string;
+  date_to?: string;
+  limit?: number;
+}
 
 export interface GetRecordsResponse extends PaginatedResponse<RegistroCompleto> {}
 
@@ -237,7 +244,7 @@ export type GetFiltersResponse = ApiResponse<{
   distances: Distancia[]
   strokes: Estilo[]
   phases: Fase[]
-  parameters: Parametro[]
+  parameters: Metrica[]
 }>
 
 // ===== TIPOS PARA ENDPOINTS DE EXPORTACIÓN =====
@@ -346,7 +353,7 @@ export type GetConfigResponse = ApiResponse<{
     distances: Distancia[]
     strokes: Estilo[]
     phases: Fase[]
-    parameters: Parametro[]
+    parameters: Metrica[]
   }
 }>
 
@@ -517,3 +524,11 @@ export const HTTP_STATUS_CODES = {
   INTERNAL_SERVER_ERROR: 500,
   SERVICE_UNAVAILABLE: 503
 } as const 
+
+export interface CompleteTestRecord {
+  prueba_id: number;
+  nadador_id: number;
+  fecha: string;
+  manual_metrics: Record<string, number>;
+  auto_metrics: Record<string, number>;
+} 

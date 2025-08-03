@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { Modal } from '@/components/ui/Modal'
-import type { Nadador } from '@/lib/types/database'
+import type { Nadador, SwimmerPerformanceSummary } from '@/lib/types'
 import type { SwimmerFormData } from '@/lib/utils/validators'
 import Link from 'next/link'
 
@@ -55,6 +55,8 @@ interface SwimmerCardProps {
   isDeleting?: boolean
   showStats?: boolean
 }
+
+type SwimmerWithStats = Nadador & Partial<SwimmerPerformanceSummary>;
 
 // ===== ICONOS =====
 
@@ -106,6 +108,8 @@ function SwimmerCard({
   showStats = false
 }: SwimmerCardProps) {
   
+  const swimmerWithStats = swimmer as SwimmerWithStats;
+
   return (
     <Card 
       className={`p-4 transition-all duration-200 hover:shadow-phoenix-lg cursor-pointer ${
@@ -118,7 +122,7 @@ function SwimmerCard({
         {/* Información del nadador */}
         <div className="flex-grow min-w-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-phoenix-red to-phoenix-orange rounded-full flex items-center justify-center text-white font-bold">
+            <div className="w-10 h-10 bg-gradient-to-r from-phoenix-red to-phoenix-orange rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
               {swimmer.nombre.charAt(0).toUpperCase()}
             </div>
             
@@ -147,17 +151,17 @@ function SwimmerCard({
             </div>
           </div>
 
-                     {/* Estadísticas si están habilitadas */}
-           {showStats && 'totalRegistros' in swimmer && (
+                     {/* Estadísticas si están habilitadas (CORREGIDO) */}
+           {showStats && swimmerWithStats.total_registros !== undefined && (
              <div className="mt-3 p-2 bg-gradient-to-r from-phoenix-yellow/10 to-phoenix-amber/10 rounded-lg">
                <div className="flex items-center justify-between text-sm">
                  <div className="flex items-center gap-1">
                    <StatsIcon />
-                   <span>Registros: {(swimmer as typeof swimmer & { totalRegistros?: number }).totalRegistros || 0}</span>
+                   <span>Registros: {swimmerWithStats.total_registros || 0}</span>
                  </div>
-                 {'ultimaParticipacion' in swimmer && (swimmer as typeof swimmer & { ultimaParticipacion?: string }).ultimaParticipacion && (
+                 {swimmerWithStats.ultima_competencia && (
                    <span className="text-muted-foreground">
-                     Último: {new Date((swimmer as typeof swimmer & { ultimaParticipacion: string }).ultimaParticipacion).toLocaleDateString()}
+                     Último: {new Date(swimmerWithStats.ultima_competencia).toLocaleDateString()}
                    </span>
                  )}
                </div>
@@ -229,7 +233,7 @@ export function SwimmerList({
   // Estados locales
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [editingSwimmer, setEditingSwimmer] = useState<Nadador | null>(null)
-  const [deletingSwimmer, setDeletingSwimmer] = useState<Nadador | null>(null)
+  const [swimmerToDelete, setSwimmerToDelete] = useState<Nadador | null>(null)
 
   // Hooks para gestión de nadadores
   const {
@@ -269,23 +273,21 @@ export function SwimmerList({
   }
 
   // Manejar eliminación de nadador
-  const handleDeleteSwimmer = async (swimmer: Nadador) => {
+  const handleDeleteSwimmer = async () => {
+    if (!swimmerToDelete) return;
     try {
-      setDeletingSwimmer(swimmer)
-      await deleteSwimmer(swimmer.id_nadador)
-      setDeletingSwimmer(null)
+      await deleteSwimmer(swimmerToDelete.id_nadador);
+      setSwimmerToDelete(null); // Cerrar modal al éxito
     } catch (_error) {
-      setDeletingSwimmer(null)
-      // El error se muestra automáticamente
+      // El error ya se muestra con un toast
+      setSwimmerToDelete(null); // Cerrar modal también en error
     }
-  }
+  };
 
-  // Confirmar eliminación
-  const confirmDelete = (swimmer: Nadador) => {
-    if (window.confirm(`¿Estás seguro de eliminar a ${swimmer.nombre}?`)) {
-      handleDeleteSwimmer(swimmer)
-    }
-  }
+  // Abre el modal de confirmación
+  const openDeleteConfirm = (swimmer: Nadador) => {
+    setSwimmerToDelete(swimmer);
+  };
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -380,10 +382,10 @@ export function SwimmerList({
                   key={swimmer.id_nadador}
                   swimmer={swimmer}
                   onEdit={setEditingSwimmer}
-                  onDelete={confirmDelete}
+                  onDelete={openDeleteConfirm}
                   onSelect={selectable ? onSwimmerSelect : undefined}
                   isSelected={selectable && selectedSwimmer?.id_nadador === swimmer.id_nadador}
-                  isDeleting={deletingSwimmer?.id_nadador === swimmer.id_nadador}
+                  isDeleting={swimmerToDelete?.id_nadador === swimmer.id_nadador}
                   showStats={showStats}
                 />
               ))}
@@ -419,6 +421,32 @@ export function SwimmerList({
              isSubmitting={isOperating}
            />
          )}
+       </Modal>
+
+       {/* Modal de Confirmación de Eliminación (Actualizado) */}
+       <Modal
+         open={!!swimmerToDelete}
+         onClose={() => setSwimmerToDelete(null)}
+         title={`Eliminar a ${swimmerToDelete?.nombre}`}
+         variant="destructive"
+       >
+         <div>
+           <p className="text-destructive/90">
+             ¿Estás seguro de que quieres eliminar a <strong>{swimmerToDelete?.nombre}</strong>?
+           </p>
+           <p className="mt-2 text-sm text-muted-foreground">
+             Esta acción es irreversible. Solo se pueden eliminar nadadores que no tengan
+             registros de rendimiento asociados.
+           </p>
+         </div>
+         <div className="mt-6 flex justify-end gap-3">
+           <Button variant="outline" onClick={() => setSwimmerToDelete(null)}>
+             Cancelar
+           </Button>
+           <Button variant="destructive" onClick={handleDeleteSwimmer} loading={isOperating}>
+             Sí, eliminar nadador
+           </Button>
+         </div>
        </Modal>
     </div>
   )

@@ -53,29 +53,29 @@ const typeConfig = {
   estilos: {
     table: 'estilos',
     idField: 'estilo_id',
-    nameField: 'estilo',
+    nameField: 'nombre',
     schema: EstiloSchema,
-    orderBy: 'estilo'
+    orderBy: 'nombre'
   },
   fases: {
     table: 'fases',
     idField: 'fase_id',
-    nameField: 'fase',
+    nameField: 'nombre',
     schema: FaseSchema,
-    orderBy: 'fase'
+    orderBy: 'nombre'
   },
-  parametros: {
-    table: 'parametros',
-    idField: 'parametro_id',
-    nameField: 'parametro',
+  metricas: {
+    table: 'metricas',
+    idField: 'metrica_id',
+    nameField: 'nombre',
     schema: ParametroSchema,
-    orderBy: 'parametro_id'
+    orderBy: 'metrica_id'
   }
 } as const
 
 /**
  * GET - Obtener datos de referencia
- * ?type=distancias|estilos|fases|parametros
+ * ?type=distancias|estilos|fases|metricas
  * ?search=texto&limit=50&offset=0
  */
 export async function GET(request: NextRequest) {
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     // Validar tipo
     if (!type || !typeConfig[type]) {
       return NextResponse.json(
-        { error: 'Tipo requerido: distancias, estilos, fases, parametros' },
+        { error: 'Tipo requerido: distancias, estilos, fases, metricas' },
         { status: 400 }
       )
     }
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
     // Validar tipo
     if (!type || !typeConfig[type]) {
       return NextResponse.json(
-        { error: 'Tipo requerido: distancias, estilos, fases, parametros' },
+        { error: 'Tipo requerido: distancias, estilos, fases, metricas' },
         { status: 400 }
       )
     }
@@ -228,7 +228,7 @@ export async function PUT(request: NextRequest) {
     // Validar tipo
     if (!type || !typeConfig[type]) {
       return NextResponse.json(
-        { error: 'Tipo requerido: distancias, estilos, fases, parametros' },
+        { error: 'Tipo requerido: distancias, estilos, fases, metricas' },
         { status: 400 }
       )
     }
@@ -311,7 +311,7 @@ export async function DELETE(request: NextRequest) {
     // Validar tipo
     if (!type || !typeConfig[type]) {
       return NextResponse.json(
-        { error: 'Tipo requerido: distancias, estilos, fases, parametros' },
+        { error: 'Tipo requerido: distancias, estilos, fases, metricas' },
         { status: 400 }
       )
     }
@@ -345,7 +345,7 @@ export async function DELETE(request: NextRequest) {
       distancias: 'distancia_id',
       estilos: 'estilo_id', 
       fases: 'fase_id',
-      parametros: 'parametro_id'
+      metricas: 'metrica_id'
     }
 
     const { data: registros } = await supabase

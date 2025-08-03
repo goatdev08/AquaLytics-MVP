@@ -4,7 +4,7 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "functions": {
-    "app/api/**/*.ts": {
+    "api/**/*.py": {
       "maxDuration": 30
     }
   },

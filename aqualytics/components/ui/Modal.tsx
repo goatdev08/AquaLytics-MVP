@@ -334,7 +334,7 @@ const Modal = forwardRef<HTMLDivElement, ModalProps>(
           {/* Content */}
           {children && (
             <div className={cn(
-              'px-6',
+              'px-6 max-h-[80vh] overflow-y-auto',
               !(title || description || showCloseButton) && 'pt-6',
               !footer && 'pb-6'
             )}>

@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from './lib/utils/logger'
+
+const logger = createLogger('Middleware')
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -15,7 +18,7 @@ function handleApiRequest(request: NextRequest) {
   const startTime = Date.now()
   const { method, url } = request
   
-  console.log(`🌐 ${method} ${url} - Started`)
+  logger.info(`${method} ${url} - Started`)
   
   // Crear respuesta con CORS headers
   const response = NextResponse.next()
@@ -46,6 +49,6 @@ function handleApiRequest(request: NextRequest) {
 // Configurar matcher para que solo aplique a rutas específicas
 export const config = {
   matcher: [
-    '/api/:path*',
+    '/((?!api).*)', // Aplicar a todo excepto a /api/ para que el proxy funcione
   ],
 } 

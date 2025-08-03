@@ -1,7 +1,9 @@
 'use client'
 
 import React from 'react'
-import { TimeRange } from '@/lib/hooks/useTeamOverview'
+
+// Tipo local para evitar dependencia faltante
+type TimeRange = '7d' | '30d' | '3m' | '6m' | '1y' | 'all'
 
 interface TimeRangeSelectorProps {
   value: TimeRange

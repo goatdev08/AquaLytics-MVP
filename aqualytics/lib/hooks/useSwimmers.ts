@@ -4,8 +4,9 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import type { Nadador } from '@/lib/types/database'
+import type { Nadador, SwimmerPerformanceSummary } from '@/lib/types'
 import type { SwimmerFormData } from '@/lib/utils/validators'
+import toast from 'react-hot-toast'
 
 // ===== TIPOS =====
 
@@ -16,10 +17,8 @@ interface SwimmerListParams {
   includeStats?: boolean
 }
 
-interface SwimmerWithStats extends Nadador {
-  totalRegistros?: number
-  ultimaParticipacion?: string | null
-}
+// El tipo para un nadador con sus estadísticas ahora combina el tipo base y el de la vista.
+export type SwimmerWithStats = Nadador & Partial<SwimmerPerformanceSummary>;
 
 interface ApiResponse<T> {
   success: boolean
@@ -107,7 +106,20 @@ async function deleteSwimmer(id: number): Promise<void> {
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.error || 'Error al eliminar nadador')
+    // Pasar el status code en el error para un manejo más inteligente
+    const err = new Error(error.error || 'Error al eliminar nadador')
+    ;(err as any).status = response.status
+    throw err
+  }
+}
+
+// Función para refrescar las vistas materializadas
+async function refreshViews() {
+  try {
+    await fetch('/api/system/refresh-views', { method: 'POST' });
+  } catch (error) {
+    console.error("Failed to refresh materialized views:", error);
+    // No bloqueamos al usuario por esto, pero lo registramos.
   }
 }
 
@@ -125,6 +137,8 @@ export function useSwimmers(options: UseSwimmersOptions = {}) {
     isDeleting: false,
   })
 
+  const [revalidationKey, setRevalidationKey] = useState(0);
+
   // Función para cargar nadadores
   const loadSwimmers = useCallback(async () => {
     try {
@@ -140,7 +154,7 @@ export function useSwimmers(options: UseSwimmersOptions = {}) {
   // Cargar nadadores al montar el componente
   useEffect(() => {
     loadSwimmers()
-  }, [loadSwimmers])
+  }, [loadSwimmers, revalidationKey])
 
   // Auto-refresh si está habilitado
   useEffect(() => {
@@ -150,8 +164,13 @@ export function useSwimmers(options: UseSwimmersOptions = {}) {
     return () => clearInterval(interval)
   }, [autoRefresh, refreshInterval, loadSwimmers])
 
+  const forceRevalidation = () => {
+    setRevalidationKey(prev => prev + 1);
+  };
+
   // Función para crear nadador
   const createSwimmerAsync = useCallback(async (swimmer: SwimmerFormData) => {
+    const toastId = toast.loading('Creando nadador...')
     try {
       setState(prev => ({ ...prev, isCreating: true, error: null }))
       
@@ -161,8 +180,8 @@ export function useSwimmers(options: UseSwimmersOptions = {}) {
         nombre: swimmer.nombre,
         edad: swimmer.edad ?? null,
         peso: swimmer.peso ?? null,
-        totalRegistros: includeStats ? 0 : undefined,
-        ultimaParticipacion: includeStats ? null : undefined
+        total_registros: includeStats ? 0 : undefined,
+        ultima_competencia: includeStats ? new Date().toISOString() : undefined
       }
       
       setState(prev => ({
@@ -181,6 +200,8 @@ export function useSwimmers(options: UseSwimmersOptions = {}) {
         isCreating: false
       }))
 
+      toast.success('Nadador creado exitosamente', { id: toastId })
+      forceRevalidation()
       return newSwimmer
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error al crear nadador'
@@ -191,12 +212,14 @@ export function useSwimmers(options: UseSwimmersOptions = {}) {
         // Revertir optimistic update
         swimmers: prev.swimmers.filter(s => s.id_nadador !== Date.now())
       }))
+      toast.error(errorMessage, { id: toastId })
       throw error
     }
-  }, [includeStats])
+  }, [includeStats, forceRevalidation])
 
   // Función para actualizar nadador
   const updateSwimmerAsync = useCallback(async (swimmer: Partial<SwimmerFormData> & { id_nadador: number }) => {
+    const toastId = toast.loading('Actualizando nadador...')
     try {
       setState(prev => ({ ...prev, isUpdating: true, error: null }))
       
@@ -220,38 +243,51 @@ export function useSwimmers(options: UseSwimmersOptions = {}) {
         isUpdating: false
       }))
 
+      toast.success('Nadador actualizado exitosamente', { id: toastId })
+      forceRevalidation()
       return updatedSwimmer
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error al actualizar nadador'
       setState(prev => ({ ...prev, error: errorMessage, isUpdating: false }))
       // Recargar datos para revertir optimistic update
       loadSwimmers()
+      toast.error(errorMessage, { id: toastId })
       throw error
     }
-  }, [loadSwimmers])
+  }, [includeStats, forceRevalidation])
 
-  // Función para eliminar nadador
+  // Función para eliminar nadador (con manejo de error 409)
   const deleteSwimmerAsync = useCallback(async (id: number) => {
-    try {
-      setState(prev => ({ ...prev, isDeleting: true, error: null }))
-      
-      // Optimistic update
-      setState(prev => ({
-        ...prev,
-        swimmers: prev.swimmers.filter(s => s.id_nadador !== id)
-      }))
+    const toastId = toast.loading('Eliminando nadador...');
+    const originalSwimmers = state.swimmers;
 
-      await deleteSwimmer(id)
-      
-      setState(prev => ({ ...prev, isDeleting: false }))
+    // Optimistic update
+    setState(prev => ({
+      ...prev,
+      swimmers: prev.swimmers.filter(s => s.id_nadador !== id)
+    }));
+
+    try {
+      await deleteSwimmer(id);
+      toast.success('Nadador eliminado exitosamente', { id: toastId });
+      forceRevalidation();
+
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error al eliminar nadador'
-      setState(prev => ({ ...prev, error: errorMessage, isDeleting: false }))
-      // Recargar datos para revertir optimistic update
-      loadSwimmers()
-      throw error
+      // Revertir optimistic update
+      setState(prev => ({ ...prev, swimmers: originalSwimmers }));
+
+      const err = error as any;
+      if (err.status === 409) {
+        // Error de conflicto (nadador con registros)
+        toast.error(err.message, { id: toastId, duration: 6000 });
+      } else {
+        // Otro tipo de error
+        const errorMessage = error instanceof Error ? error.message : 'Error al eliminar nadador';
+        toast.error(errorMessage, { id: toastId });
+      }
+      throw error;
     }
-  }, [state.swimmers, loadSwimmers])
+  }, [state.swimmers, forceRevalidation]);
 
   // Estados computados
   const isOperating = state.isCreating || state.isUpdating || state.isDeleting
