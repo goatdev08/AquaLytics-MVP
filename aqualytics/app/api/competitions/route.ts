@@ -65,18 +65,23 @@ export async function GET(request: NextRequest) {
     const supabase = createSupabaseAdmin()
 
     if (includeStats) {
-      // Usamos la vista materializada para obtener estadísticas de forma eficiente
+      // Consulta con estadísticas usando tablas reales (no vista materializada)
       let query = supabase
-        .from('mv_competition_stats')
-        .select('*')
+        .from('competencias')
+        .select(`
+          competencia_id,
+          competencia,
+          periodo,
+          registros!inner(registro_id, id_nadador, fecha)
+        `)
 
       // Búsqueda por nombre
       if (search) {
         query = query.ilike('competencia', `%${search}%`)
       }
 
-      // Ordenar por fecha más reciente primero (usando el campo de la vista)
-      query = query.order('fecha_fin', { ascending: false })
+      // Ordenar por ID de competencia (más reciente primero)
+      query = query.order('competencia_id', { ascending: false })
 
       // Paginación
       if (limit > 0) {
@@ -93,9 +98,26 @@ export async function GET(request: NextRequest) {
         )
       }
 
+      // Procesar datos para agregar estadísticas básicas
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const competitionsWithStats = data?.map((comp: any) => {
+        const registrosCount = comp.registros?.length || 0
+        const uniqueSwimmers = new Set(comp.registros?.map((r: any) => r.id_nadador)).size
+        
+        return {
+          competencia_id: comp.competencia_id,
+          competencia: comp.competencia,
+          periodo: comp.periodo,
+          total_registros: registrosCount,
+          total_nadadores: uniqueSwimmers,
+          fecha_inicio: null, // Se podría extraer del periodo si es necesario
+          fecha_fin: null     // Se podría extraer del periodo si es necesario
+        }
+      }) || []
+
       return NextResponse.json({
         success: true,
-        data: data || [],
+        data: competitionsWithStats,
         total: count,
         limit,
         offset
