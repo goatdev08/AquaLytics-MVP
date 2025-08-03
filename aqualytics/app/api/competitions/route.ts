@@ -6,6 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createSupabaseAdmin } from '@/lib/supabase'
+import { createLogger } from '@/lib/utils/logger'
+
+const logger = createLogger('CompetitionsAPI')
 
 // Tipos para manejo de datos de competencias
 interface CompetitionWithPeriod {
@@ -60,73 +63,104 @@ export async function GET(request: NextRequest) {
     const includeStats = searchParams.get('includeStats') === 'true'
 
     const supabase = createSupabaseAdmin()
-    let query = supabase
-      .from('competencias')
-      .select(
-        includeStats 
-          ? 'competencia_id, competencia, periodo, registros(count)'
-          : 'competencia_id, competencia, periodo'
-      )
 
-    // Búsqueda por nombre
-    if (search) {
-      query = query.ilike('competencia', `%${search}%`)
-    }
+    if (includeStats) {
+      // Usamos la vista materializada para obtener estadísticas de forma eficiente
+      let query = supabase
+        .from('mv_competition_stats')
+        .select('*')
 
-    // Ordenar por fecha más reciente primero
-    query = query.order('competencia_id', { ascending: false })
-
-    // Paginación
-    if (limit > 0) {
-      query = query.range(offset, offset + limit - 1)
-    }
-
-    const { data, error } = await query
-
-    if (error) {
-      console.error('Error fetching competitions:', error)
-      return NextResponse.json(
-        { error: 'Error al obtener competencias', details: error.message },
-        { status: 500 }
-      )
-    }
-
-    // Procesar datos de periodo (daterange)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const competitions = data?.map((comp: any) => {
-      const result: CompetitionWithPeriod = {
-        competencia_id: comp.competencia_id,
-        competencia: comp.competencia,
-        fecha_inicio: null,
-        fecha_fin: null
+      // Búsqueda por nombre
+      if (search) {
+        query = query.ilike('competencia', `%${search}%`)
       }
 
-      // Parsear daterange de PostgreSQL [2024-01-01,2024-01-07)
-      if (comp.periodo) {
-        const match = comp.periodo.match(/\[(\d{4}-\d{2}-\d{2}),(\d{4}-\d{2}-\d{2})\)/)
-        if (match) {
-          result.fecha_inicio = match[1]
-          result.fecha_fin = match[2]
+      // Ordenar por fecha más reciente primero (usando el campo de la vista)
+      query = query.order('fecha_fin', { ascending: false })
+
+      // Paginación
+      if (limit > 0) {
+        query = query.range(offset, offset + limit - 1)
+      }
+
+      const { data, error, count } = await query
+
+      if (error) {
+        logger.error('Error fetching competition stats:', error)
+        return NextResponse.json(
+          { error: 'Error al obtener estadísticas de competencias', details: error.message },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: data || [],
+        total: count,
+        limit,
+        offset
+      })
+
+    } else {
+      // Flujo original sin estadísticas
+      let query = supabase
+        .from('competencias')
+        .select('competencia_id, competencia, periodo')
+
+      // Búsqueda por nombre
+      if (search) {
+        query = query.ilike('competencia', `%${search}%`)
+      }
+
+      // Ordenar por ID (o fecha si se prefiere)
+      query = query.order('competencia_id', { ascending: false })
+
+      // Paginación
+      if (limit > 0) {
+        query = query.range(offset, offset + limit - 1)
+      }
+
+      const { data, error, count } = await query
+
+      if (error) {
+        logger.error('Error fetching competitions:', error)
+        return NextResponse.json(
+          { error: 'Error al obtener competencias', details: error.message },
+          { status: 500 }
+        )
+      }
+
+      // Procesar datos de periodo (daterange)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const competitions = data?.map((comp: any) => {
+        const result: CompetitionWithPeriod = {
+          competencia_id: comp.competencia_id,
+          competencia: comp.competencia,
+          fecha_inicio: null,
+          fecha_fin: null
         }
-      }
 
-      // Agregar estadísticas si se solicitan
-      if (includeStats && comp.registros) {
-        result.totalRegistros = Array.isArray(comp.registros) ? comp.registros.length : comp.registros.count || 0
-      }
+        // Parsear daterange de PostgreSQL [2024-01-01,2024-01-07)
+        if (comp.periodo) {
+          const match = comp.periodo.match(/\[(\d{4}-\d{2}-\d{2}),(\d{4}-\d{2}-\d{2})\)/)
+          if (match) {
+            result.fecha_inicio = match[1]
+            result.fecha_fin = match[2]
+          }
+        }
+        return result
+      }) || []
 
-      return result
-    }) || []
-
-    return NextResponse.json({
-      data: competitions,
-      total: competitions.length,
-      limit,
-      offset
-    })
-
+      return NextResponse.json({
+        success: true,
+        data: competitions,
+        total: count,
+        limit,
+        offset
+      })
+    }
   } catch (error) {
-    console.error('Unexpected error in GET /api/competitions:', error)
+    logger.error('Unexpected error in GET /api/competitions:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
@@ -178,7 +212,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating competition:', error)
+      logger.error('Error creating competition:', error)
       return NextResponse.json(
         { error: 'Error al crear competencia', details: error.message },
         { status: 500 }
@@ -199,7 +233,7 @@ export async function POST(request: NextRequest) {
     }, { status: 201 })
 
   } catch (error) {
-    console.error('Unexpected error in POST /api/competitions:', error)
+    logger.error('Unexpected error in POST /api/competitions:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
@@ -253,7 +287,7 @@ export async function PUT(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error updating competition:', error)
+      logger.error('Error updating competition:', error)
       return NextResponse.json(
         { error: 'Error al actualizar competencia', details: error.message },
         { status: 500 }
@@ -274,7 +308,7 @@ export async function PUT(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Unexpected error in PUT /api/competitions:', error)
+    logger.error('Unexpected error in PUT /api/competitions:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
@@ -334,7 +368,7 @@ export async function DELETE(request: NextRequest) {
       .eq('competencia_id', id)
 
     if (error) {
-      console.error('Error deleting competition:', error)
+      logger.error('Error deleting competition:', error)
       return NextResponse.json(
         { error: 'Error al eliminar competencia', details: error.message },
         { status: 500 }
@@ -347,7 +381,7 @@ export async function DELETE(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Unexpected error in DELETE /api/competitions:', error)
+    logger.error('Unexpected error in DELETE /api/competitions:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }

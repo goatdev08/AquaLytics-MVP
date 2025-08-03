@@ -5,7 +5,7 @@
 
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
-import type { Nadador, NuevoNadador } from '@/lib/types/database'
+import type { Nadador, NuevoNadador, Prueba } from '@/lib/types/database'
 
 // ===== TIPOS DEL STORE =====
 
@@ -13,6 +13,7 @@ interface SwimmersStore {
   // Estado
   swimmers: Nadador[]
   selectedSwimmer: Nadador | null
+  selectedPrueba: Prueba | null
   loading: boolean
   error: string | null
   
@@ -41,6 +42,12 @@ interface SwimmersStore {
   // Seleccionar nadador actual
   selectSwimmer: (swimmer: Nadador | null) => void
   
+  // Seleccionar prueba actual
+  setSelectedPrueba: (prueba: Prueba | null) => void
+  
+  // Limpiar prueba seleccionada
+  clearSelectedPrueba: () => void
+  
   // ===== UTILIDADES =====
   
   // Resetear estado
@@ -52,6 +59,7 @@ interface SwimmersStore {
 const initialState = {
   swimmers: [],
   selectedSwimmer: null,
+  selectedPrueba: null,
   loading: false,
   error: null,
   lastFetch: null,
@@ -226,6 +234,14 @@ export const useSwimmersStore = create<SwimmersStore>((set, get) => ({
   
   selectSwimmer: (swimmer: Nadador | null) => {
     set({ selectedSwimmer: swimmer })
+  },
+  
+  setSelectedPrueba: (prueba: Prueba | null) => {
+    set({ selectedPrueba: prueba })
+  },
+  
+  clearSelectedPrueba: () => {
+    set({ selectedPrueba: null })
   },
   
   // ===== UTILIDADES =====

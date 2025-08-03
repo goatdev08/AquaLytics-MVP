@@ -1,11 +1,13 @@
 """
 Data Ingestion Function - AquaLytics API
-Función serverless para ingesta de datos de natación con cálculo automático de métricas
+Función serverless para ingesta de datos de natación
 """
 
 import json
 import logging
-from typing import Dict, List, Any, Optional
+import pandas as pd
+import io
+from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 from starlette.applications import Starlette
@@ -15,368 +17,335 @@ from starlette.routing import Route
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 
-# Importar utilidades locales
-from utils.supabase_client import create_supabase_client, MetricRecord
+from utils.supabase_client import SupabaseClient, MetricRecord
+from utils.csv_processor import CSVProcessor
 from utils.data_validation import SwimmingDataValidator
-from utils.csv_processor import process_csv_data
-from calculations.swimming_metrics import SwimmingMetricsCalculator, MetricCalculationInput
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class DataIngestionService:
-    """Servicio de ingesta de datos de natación"""
+    """Servicio de ingesta de datos"""
     
     def __init__(self):
-        self.db_client = create_supabase_client()
+        self.supabase_client = None
         self.validator = SwimmingDataValidator()
-        self.metrics_calculator = SwimmingMetricsCalculator()
-        self.reference_cache = {}
     
     async def initialize(self):
-        """Inicializa conexiones y carga datos de referencia"""
-        success = await self.db_client.connect()
-        if not success:
-            raise RuntimeError("No se pudo conectar a la base de datos")
-        
-        self.reference_cache = await self.db_client.get_reference_data()
-        logger.info("Servicio de ingesta inicializado")
+        """Inicializa el servicio si es necesario"""
+        if not self.supabase_client:
+            try:
+                self.supabase_client = SupabaseClient()
+                logger.info("Cliente de Supabase inicializado")
+            except Exception as e:
+                logger.error(f"Error inicializando Supabase: {str(e)}")
+                raise
     
-    def find_reference_id(self, table: str, value: str) -> Optional[int]:
-        """Busca ID en tablas de referencia"""
-        if table not in self.reference_cache:
-            return None
-        
-        field_map = {
-            'distances': ('distancia', 'distancia_id'),
-            'strokes': ('estilo', 'estilo_id'),
-            'phases': ('fase', 'fase_id'),
-            'parameters': ('parametro', 'parametro_id')
-        }
-        
-        if table not in field_map:
-            return None
-        
-        search_field, id_field = field_map[table]
-        value_lower = str(value).lower().strip()
-        
-        for item in self.reference_cache[table]:
-            if str(item.get(search_field, '')).lower().strip() == value_lower:
-                return item.get(id_field)
-        
-        return None
-    
-    async def process_single_record(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Procesa un registro individual de métricas"""
+    async def ingest_csv_data(self, csv_content: str, filename: str) -> Dict[str, Any]:
+        """Procesa e ingesta datos desde contenido CSV"""
         try:
-            # Validar métricas manuales
-            validation = self.validator.validate_manual_metrics(data)
-            if not validation.is_valid:
-                return {'success': False, 'errors': validation.errors, 'data': None}
+            # Asegurar inicialización
+            await self.initialize()
             
-            manual_data = validation.sanitized_data
+            # Leer CSV desde string
+            df = pd.read_csv(io.StringIO(csv_content))
             
-            # Calcular métricas automáticas
-            calc_input = MetricCalculationInput(
-                t25_1=manual_data['t25_1'],
-                t25_2=manual_data['t25_2'],
-                t_total=manual_data['t_total'],
-                brz_total=manual_data['brz_total'],
-                f1=manual_data['f1'],
-                f2=manual_data['f2'],
-                distance=data.get('distancia', 50.0)
-            )
+            # Procesar con CSVProcessor
+            processor = CSVProcessor()
             
-            calc_result = self.metrics_calculator.calculate_all_metrics(calc_input)
-            if not calc_result.success:
-                return {'success': False, 'errors': calc_result.errors, 'data': None}
+            # Guardar temporalmente para procesamiento
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=True) as tmp:
+                df.to_csv(tmp.name, index=False)
+                processed_df, errors = processor.process_csv(tmp.name)
             
-            # Resolver nadador (crear si no existe)
-            swimmer_name = data.get('nadador', '').strip()
-            swimmers = await self.db_client.get_swimmers()
-            swimmer_id = None
-            
-            for swimmer in swimmers:
-                if swimmer['nombre'].lower().strip() == swimmer_name.lower():
-                    swimmer_id = swimmer['id_nadador']
-                    break
-            
-            if not swimmer_id:
-                new_swimmer = await self.db_client.create_swimmer(swimmer_name)
-                swimmer_id = new_swimmer['id_nadador']
-            
-            # Resolver competencia (crear si no existe)
-            competition_name = data.get('competencia', '').strip()
-            competitions = await self.db_client.get_competitions(limit=100)
-            competition_id = None
-            
-            for comp in competitions:
-                if comp['competencia'].lower().strip() == competition_name.lower():
-                    competition_id = comp['competencia_id']
-                    break
-            
-            if not competition_id:
-                period = data.get('periodo', datetime.now().strftime('%Y'))
-                new_comp = await self.db_client.create_competition(competition_name, period)
-                competition_id = new_comp['competencia_id']
-            
-            # Buscar IDs de referencia
-            distance_id = self.find_reference_id('distances', data.get('distancia', 50))
-            stroke_id = self.find_reference_id('strokes', data.get('estilo', ''))
-            phase_id = self.find_reference_id('phases', data.get('fase', ''))
-            
-            if not all([distance_id, stroke_id, phase_id]):
-                missing = []
-                if not distance_id: missing.append("distancia")
-                if not stroke_id: missing.append("estilo")
-                if not phase_id: missing.append("fase")
-                
+            # Verificar errores críticos
+            critical_errors = [e for e in errors if e.severity == 'error']
+            if critical_errors:
                 return {
-                    'success': False,
-                    'errors': [f"Referencias no encontradas: {', '.join(missing)}"],
-                    'data': None
+                    "success": False,
+                    "message": "Se encontraron errores en el archivo",
+                    "errors": [
+                        {
+                            "row": e.row,
+                            "column": e.column,
+                            "message": e.message
+                        } for e in critical_errors
+                    ],
+                    "warnings": [
+                        {
+                            "row": e.row,
+                            "column": e.column,
+                            "message": e.message
+                        } for e in errors if e.severity == 'warning'
+                    ]
                 }
             
-            # Crear registros de métricas
-            records = []
-            fecha = data.get('fecha', datetime.now().strftime('%Y-%m-%d'))
+            # Obtener registros para cargar
+            records_data = processor.validate_for_upload(processed_df)
             
-            # Métricas manuales
-            manual_metrics = [
-                ('t25_1', manual_data['t25_1'], 1),
-                ('t25_2', manual_data['t25_2'], 2),
-                ('t_total', manual_data['t_total'], None),
-                ('brz_1', manual_data['brz_1'], 1),
-                ('brz_2', manual_data['brz_2'], 2),
-                ('brz_total', manual_data['brz_total'], None),
-                ('f1', manual_data['f1'], 1),
-                ('f2', manual_data['f2'], 2)
-            ]
+            if not records_data:
+                return {
+                    "success": False,
+                    "message": "No se encontraron registros válidos para procesar",
+                    "errors": [],
+                    "warnings": []
+                }
             
-            for param_name, value, segment in manual_metrics:
-                param_id = self.find_reference_id('parameters', param_name)
-                if param_id:
-                    records.append(MetricRecord(
-                        competencia_id=competition_id,
-                        fecha=fecha,
-                        id_nadador=swimmer_id,
-                        distancia_id=distance_id,
-                        estilo_id=stroke_id,
-                        fase_id=phase_id,
-                        parametro_id=param_id,
-                        segmento=segment,
-                        valor=value
-                    ))
+            # Convertir a MetricRecords
+            metric_records = []
+            pruebas_no_encontradas = set()
             
-            # Métricas automáticas
-            auto_metrics = calc_result.metrics
-            automatic_params = [
-                ('v1', auto_metrics.v1),
-                ('v2', auto_metrics.v2),
-                ('v_promedio', auto_metrics.v_promedio),
-                ('dist_por_brz', auto_metrics.dist_por_brz),
-                ('dist_sin_f', auto_metrics.dist_sin_f),
-                ('f_promedio', auto_metrics.f_promedio)
-            ]
-            
-            for param_name, value in automatic_params:
-                param_id = self.find_reference_id('parameters', param_name)
-                if param_id:
-                    records.append(MetricRecord(
-                        competencia_id=competition_id,
-                        fecha=fecha,
-                        id_nadador=swimmer_id,
-                        distancia_id=distance_id,
-                        estilo_id=stroke_id,
-                        fase_id=phase_id,
-                        parametro_id=param_id,
-                        segmento=None,
-                        valor=value
-                    ))
+            for record in records_data:
+                # Obtener o crear nadador
+                nadador_id = self.supabase_client.get_or_create_nadador(record['nombre_nadador'])
+                
+                # Obtener ID de métrica
+                metrica_id = self.supabase_client.get_metrica_id(record['nombre_metrica'])
+                if not metrica_id:
+                    continue
+                
+                # Obtener ID de prueba
+                prueba_id = None
+                if record.get('prueba'):
+                    prueba_id = self.supabase_client.get_prueba_by_name(record['prueba'])
+                    
+                    if not prueba_id:
+                        # Intentar parsear y buscar por detalles
+                        prueba_parts = record['prueba'].split()
+                        if len(prueba_parts) >= 2:
+                            try:
+                                distancia = int(prueba_parts[0].lower().replace('m', ''))
+                                estilo = ' '.join(prueba_parts[1:])
+                                prueba_id = self.supabase_client.get_prueba_by_details(
+                                    distancia=distancia,
+                                    estilo=estilo,
+                                    curso='largo'
+                                )
+                            except:
+                                pass
+                    
+                    if not prueba_id:
+                        pruebas_no_encontradas.add(record['prueba'])
+                        continue
+                else:
+                    continue
+                
+                # IDs opcionales
+                competencia_id = None
+                if record.get('competencia'):
+                    competencia_id = self.supabase_client.get_or_create_competencia(record['competencia'])
+                
+                fase_id = None
+                if record.get('fase'):
+                    fase_id = self.supabase_client.get_fase_id(record['fase'])
+                
+                # Crear MetricRecord
+                metric_record = MetricRecord(
+                    id_nadador=nadador_id,
+                    prueba_id=prueba_id,
+                    metrica_id=metrica_id,
+                    valor=record['valor'],
+                    fecha=record['fecha'].strftime('%Y-%m-%d') if hasattr(record['fecha'], 'strftime') else str(record['fecha']),
+                    segmento=record.get('segmento'),
+                    competencia_id=competencia_id,
+                    fase_id=fase_id
+                )
+                
+                metric_records.append(metric_record)
             
             # Insertar registros
-            created = await self.db_client.create_multiple_metrics(records)
-            
-            return {
-                'success': True,
-                'errors': [],
-                'data': {
-                    'swimmer_id': swimmer_id,
-                    'competition_id': competition_id,
-                    'manual_metrics': manual_data,
-                    'automatic_metrics': auto_metrics.__dict__,
-                    'records_created': len(created)
-                }
-            }
-            
-        except Exception as e:
-            logger.error(f"Error procesando registro: {str(e)}")
-            return {'success': False, 'errors': [f"Error interno: {str(e)}"], 'data': None}
-    
-    async def process_csv_upload(self, file_content: bytes, filename: str) -> Dict[str, Any]:
-        """Procesa carga masiva desde CSV"""
-        try:
-            # Procesar CSV
-            csv_result = process_csv_data(file_content, filename)
-            
-            if not csv_result.success:
-                return {
-                    'success': False,
-                    'errors': csv_result.errors,
-                    'warnings': csv_result.warnings,
-                    'total_rows': csv_result.total_rows,
-                    'processed_rows': 0
-                }
-            
-            # Procesar cada fila
-            results = []
-            errors = []
-            
-            for i, row_data in enumerate(csv_result.data):
-                result = await self.process_single_record(row_data)
-                results.append({
-                    'row_number': i + 2,
-                    'success': result['success'],
-                    'data': result['data'] if result['success'] else None,
-                    'errors': result['errors'] if not result['success'] else []
-                })
+            if metric_records:
+                result = self.supabase_client.insert_metric_records(metric_records)
                 
-                if not result['success']:
-                    errors.extend([f"Fila {i + 2}: {error}" for error in result['errors']])
-            
-            successful = sum(1 for r in results if r['success'])
-            
-            return {
-                'success': successful > 0,
-                'errors': errors,
-                'warnings': csv_result.warnings,
-                'total_rows': csv_result.total_rows,
-                'processed_rows': len(results),
-                'successful_rows': successful,
-                'failed_rows': len(results) - successful,
-                'data': results
+                response = {
+                    "success": result['success'],
+                    "message": f"Se procesaron {result['inserted']} registros de métricas",
+                    "stats": {
+                        "total_records": len(records_data),
+                        "inserted": result['inserted'],
+                        "skipped": len(records_data) - result['inserted']
+                    },
+                    "warnings": [
+                        {
+                            "row": e.row,
+                            "column": e.column,
+                            "message": e.message
+                        } for e in errors if e.severity == 'warning'
+                    ],
+                    "info": "Las métricas automáticas se calculan automáticamente mediante triggers en la base de datos."
+                }
+                
+                if pruebas_no_encontradas:
+                    response["warnings"].append({
+                        "row": 0,
+                        "column": "prueba",
+                        "message": f"Pruebas no encontradas: {', '.join(pruebas_no_encontradas)}"
+                    })
+                
+                return response
+            else:
+                return {
+                    "success": False,
+                    "message": "No se pudieron procesar registros válidos",
+                    "errors": [],
+                    "warnings": []
             }
+
+        except Exception as e:
+            logger.error(f"Error en ingesta CSV: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error procesando archivo: {str(e)}",
+                "errors": [str(e)],
+                "warnings": []
+            }
+    
+    async def ingest_single_record(self, record_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Ingesta un registro individual de métrica"""
+        try:
+            await self.initialize()
+            
+            # Validación robusta usando SwimmingDataValidator
+            logger.info(f"Validando registro individual: {record_data.keys()}")
+            
+            # Validar datos del registro usando el validador robusto
+            validation_result = self.validator.validate_record_data(record_data)
+            
+            if not validation_result.is_valid:
+                logger.warning(f"Validación fallida: {validation_result.errors}")
+                return {
+                    "success": False,
+                    "message": "Datos inválidos",
+                    "errors": validation_result.errors,
+                    "warnings": validation_result.warnings
+                }
+            
+            # Usar datos sanitizados de la validación
+            sanitized_data = validation_result.sanitized_data
+            logger.info("Validación exitosa, usando datos sanitizados")
+            
+            # Obtener o crear nadador usando datos sanitizados
+            nadador_id = self.supabase_client.get_or_create_nadador(
+                sanitized_data.get('nombre', record_data.get('nadador', '')),
+                sanitized_data.get('edad'),
+                sanitized_data.get('peso')
+            )
+            
+            # Crear MetricRecord usando datos sanitizados
+            metric_record = MetricRecord(
+                id_nadador=nadador_id,
+                prueba_id=sanitized_data.get('prueba_id', record_data['prueba_id']),
+                metrica_id=sanitized_data.get('metrica_id', record_data['metrica_id']),
+                valor=sanitized_data.get('valor', float(record_data['valor'])),
+                fecha=sanitized_data.get('fecha', record_data['fecha']),
+                segmento=sanitized_data.get('segmento', record_data.get('segmento')),
+                competencia_id=sanitized_data.get('competencia_id', record_data.get('competencia_id')),
+                fase_id=sanitized_data.get('fase_id', record_data.get('fase_id'))
+            )
+            
+            # Insertar
+            result = self.supabase_client.insert_metric_records([metric_record])
+            
+            if result['success']:
+                return {
+                    "success": True,
+                    "message": "Registro insertado correctamente",
+                    "data": metric_record.to_dict()
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "Error al insertar registro",
+                    "errors": result.get('errors', [])
+                }
             
         except Exception as e:
-            logger.error(f"Error procesando CSV: {str(e)}")
+            logger.error(f"Error en ingesta individual: {str(e)}")
             return {
-                'success': False,
-                'errors': [f"Error procesando archivo: {str(e)}"],
-                'total_rows': 0,
-                'processed_rows': 0
+                "success": False,
+                "message": f"Error procesando registro: {str(e)}"
             }
 
 
-# Instancia global
+# Instancia global del servicio
 ingestion_service = DataIngestionService()
 
 
-async def ingest_single_record(request: Request) -> JSONResponse:
-    """Endpoint para registro individual"""
+# Endpoints
+
+async def ingest_csv(request: Request) -> JSONResponse:
+    """Endpoint para ingesta de archivos CSV"""
+    try:
+        # Obtener el form data
+        form = await request.form()
+        file = form.get("file")
+        
+        if not file:
+            return JSONResponse(
+                {"success": False, "message": "No se proporcionó archivo"},
+                status_code=400
+            )
+        
+        # Leer contenido del archivo
+        content = await file.read()
+        csv_content = content.decode('utf-8')
+        
+        # Procesar
+        result = await ingestion_service.ingest_csv_data(csv_content, file.filename)
+        
+        status_code = 200 if result['success'] else 400
+        return JSONResponse(result, status_code=status_code)
+        
+    except Exception as e:
+        logger.error(f"Error en endpoint CSV: {str(e)}")
+        return JSONResponse(
+            {"success": False, "message": f"Error interno: {str(e)}"},
+            status_code=500
+        )
+
+
+async def ingest_record(request: Request) -> JSONResponse:
+    """Endpoint para ingesta de registro individual"""
     try:
         data = await request.json()
+        result = await ingestion_service.ingest_single_record(data)
         
-        if not ingestion_service.db_client._is_connected:
-            await ingestion_service.initialize()
-        
-        result = await ingestion_service.process_single_record(data)
         status_code = 200 if result['success'] else 400
         return JSONResponse(result, status_code=status_code)
         
     except json.JSONDecodeError:
-        return JSONResponse({
-            'success': False,
-            'errors': ['JSON inválido'],
-            'data': None
-        }, status_code=400)
+        return JSONResponse(
+            {"success": False, "message": "JSON inválido"},
+            status_code=400
+        )
     except Exception as e:
-        logger.error(f"Error en endpoint: {str(e)}")
-        return JSONResponse({
-            'success': False,
-            'errors': [f'Error interno: {str(e)}'],
-            'data': None
-        }, status_code=500)
+        logger.error(f"Error en endpoint record: {str(e)}")
+        return JSONResponse(
+            {"success": False, "message": f"Error interno: {str(e)}"},
+            status_code=500
+        )
 
 
-async def ingest_csv_file(request: Request) -> JSONResponse:
-    """Endpoint para carga masiva CSV"""
-    try:
-        if not ingestion_service.db_client._is_connected:
-            await ingestion_service.initialize()
-        
-        form = await request.form()
-        csv_file = form.get('file')
-        
-        if not csv_file:
-            return JSONResponse({
-                'success': False,
-                'errors': ['No se encontró archivo'],
-                'data': []
-            }, status_code=400)
-        
-        filename = getattr(csv_file, 'filename', 'upload.csv')
-        file_content = await csv_file.read()
-        
-        if not file_content:
-            return JSONResponse({
-                'success': False,
-                'errors': ['Archivo vacío'],
-                'data': []
-            }, status_code=400)
-        
-        result = await ingestion_service.process_csv_upload(file_content, filename)
-        status_code = 200 if result['success'] else 400
-        return JSONResponse(result, status_code=status_code)
-        
-    except Exception as e:
-        logger.error(f"Error en CSV endpoint: {str(e)}")
-        return JSONResponse({
-            'success': False,
-            'errors': [f'Error interno: {str(e)}'],
-            'data': []
-        }, status_code=500)
-
-
-async def health_check(request: Request) -> JSONResponse:
-    """Endpoint de health check"""
-    try:
-        if not ingestion_service.db_client._is_connected:
-            await ingestion_service.initialize()
-        
-        db_health = await ingestion_service.db_client.health_check()
-        
-        return JSONResponse({
-            'status': 'healthy',
-            'timestamp': datetime.now().isoformat(),
-            'database': db_health,
-            'cache_loaded': bool(ingestion_service.reference_cache)
-        })
-        
-    except Exception as e:
-        return JSONResponse({
-            'status': 'error',
-            'timestamp': datetime.now().isoformat(),
-            'error': str(e)
-        }, status_code=500)
-
-
-# Configuración Starlette
+# Configuración de rutas
 routes = [
-    Route('/ingest/record', ingest_single_record, methods=['POST']),
-    Route('/ingest/csv', ingest_csv_file, methods=['POST']),
-    Route('/health', health_check, methods=['GET'])
+    Route('/ingest/csv', ingest_csv, methods=['POST']),
+    Route('/ingest/record', ingest_record, methods=['POST'])
 ]
 
+# Middleware
 middleware = [
-    Middleware(CORSMiddleware, 
+    Middleware(
+        CORSMiddleware,
               allow_origins=['*'], 
-              allow_methods=['GET', 'POST'], 
-              allow_headers=['*'])
+        allow_methods=['POST', 'OPTIONS'],
+        allow_headers=['*']
+    )
 ]
 
+# Aplicación Starlette
 app = Starlette(routes=routes, middleware=middleware)
-
 
 # Handler para Vercel
 async def handler(request, context=None):

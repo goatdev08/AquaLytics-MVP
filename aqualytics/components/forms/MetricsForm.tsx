@@ -5,8 +5,8 @@
  * Entrada de métricas de natación con validación en tiempo real
  */
 
-import React, { useEffect, useState } from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import React, { useEffect, useState, useRef } from 'react'
+import { useForm, Controller, useFieldArray, FormProvider } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -14,10 +14,45 @@ import { Select } from '@/components/ui/Select'
 import { Card } from '@/components/ui/Card'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { MetricFormSchema, type MetricFormData } from '@/lib/utils/validators'
+import { getSplitConfiguration, calculateSegments, type CourseType, type Segment } from '@/lib/utils/segmentCalculator'
 import { 
   type Nadador,
-  type Competencia
-} from '@/lib/types/database'
+  type Competencia,
+  type Prueba,
+  type Fase,
+  type Distancia,
+  type Metrica
+} from '@/lib/types'
+import { SegmentInputGroup } from './SegmentInputGroup'
+import { formatTime } from '@/lib/utils/formatters'
+import { METRICS_DEFINITIONS } from '@/lib/utils/metrics-mapping'
+import { createLogger } from '@/lib/utils/logger'
+
+const logger = createLogger('MetricsForm')
+
+// +++ ADDED: Define types that were previously imported
+export interface CalculationOutput {
+  globalMetrics: Partial<GlobalMetrics>;
+  perSegmentMetrics: PerSegmentMetrics[];
+}
+
+export interface ManualMetricsData {
+  tiempo_total?: number;
+  brazadas_totales?: number;
+  segments: any[]; // Simplified for preview payload
+}
+
+export interface PerSegmentMetrics {
+  segmentLabel: string;
+  velocity?: number;
+}
+
+export interface GlobalMetrics {
+  v_promedio?: number;
+  dist_x_brz?: number;
+  dist_sin_f?: number;
+  f_promedio?: number;
+}
 
 // ===== TIPOS =====
 
@@ -103,6 +138,78 @@ const CancelIcon = () => (
   </svg>
 )
 
+// ===== COMPONENTE DE PREVISUALIZACIÓN MEJORADO =====
+interface PreviewProps {
+  calculation: CalculationOutput;
+  totalTime: number;
+  totalStrokes: number;
+  segments: Segment[];
+}
+
+const CalculationPreview = React.memo(({ calculation, totalTime, totalStrokes, segments }: PreviewProps) => {
+  const { globalMetrics, perSegmentMetrics } = calculation;
+  const hasGlobalCalculations = Object.keys(globalMetrics).length > 0;
+
+  return (
+    <div className="space-y-4">
+      {/* Resumen de Tramos y Métricas Globales */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <div className="text-sm text-blue-800 dark:text-blue-300">Tramos Configurados</div>
+          <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+            {segments.length > 0 ? `${segments.length} x ${segments[0].length}m` : 'N/A'}
+          </div>
+        </div>
+        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+          <div className="text-sm text-green-800 dark:text-green-300">Tiempo Total</div>
+          <div className="text-lg font-bold text-green-600 dark:text-green-400 font-mono">
+            {formatTime(totalTime)}
+          </div>
+        </div>
+        <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+          <div className="text-sm text-yellow-800 dark:text-yellow-300">Brazadas Totales</div>
+          <div className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
+            {totalStrokes}
+          </div>
+        </div>
+      </div>
+
+      {/* Métricas Globales Calculadas */}
+      {hasGlobalCalculations && (
+         <div>
+         <h4 className="font-semibold text-foreground mb-2 mt-4">Métricas Globales Derivadas</h4>
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+           {Object.entries(globalMetrics).map(([key, value]) => {
+             const metricDef = METRICS_DEFINITIONS.find(m => m.parametro.toLowerCase().replace(/ /g, '_') === key);
+             return(
+               <div key={key} className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex justify-between items-center">
+                 <span className="text-sm text-purple-800 dark:text-purple-300">{metricDef?.label || key}</span>
+                 <span className="font-bold text-purple-600 dark:text-purple-400">{value?.toFixed(2)} {metricDef?.unit}</span>
+               </div>
+             )
+           })}
+         </div>
+       </div>
+      )}
+
+      {/* Métricas por Tramo Calculadas */}
+      {perSegmentMetrics.length > 0 && (
+        <div>
+          <h4 className="font-semibold text-foreground mb-2 mt-4">Métricas por Tramo</h4>
+          <div className="space-y-2">
+            {perSegmentMetrics.map((metric, index) => (
+              <div key={index} className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg flex justify-between items-center">
+                 <span className="text-sm text-indigo-800 dark:text-indigo-300">{metric.segmentLabel} - Velocidad</span>
+                 <span className="font-bold text-indigo-600 dark:text-indigo-400">{metric.velocity?.toFixed(3)} m/s</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
 // ===== COMPONENTE PRINCIPAL =====
 
 export function MetricsForm({
@@ -117,16 +224,21 @@ export function MetricsForm({
   // Estados para datos de referencia
   const [swimmers, setSwimmers] = useState<Nadador[]>([])
   const [competitions, setCompetitions] = useState<Competencia[]>([])
-  const [distances, setDistances] = useState<Array<{ distancia_id: number; distancia: number }>>([])
-  const [strokes, setStrokes] = useState<Array<{ estilo_id: number; estilo: string }>>([])
-  const [phases, setPhases] = useState<Array<{ fase_id: number; fase: string }>>([])
+  const [pruebas, setPruebas] = useState<Prueba[]>([])
+  const [phases, setPhases] = useState<Fase[]>([])
+  const [distancias, setDistancias] = useState<Distancia[]>([])
+  const [metricas, setMetricas] = useState<Metrica[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
+  const [dynamicSegments, setDynamicSegments] = useState<Segment[]>([])
   
   // Estados para persistencia y feedback
   const [isInternalSubmitting, setIsInternalSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [submitMessage, setSubmitMessage] = useState('')
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [isHidingAutoSave, setIsHidingAutoSave] = useState(false)
+  const isSavingRef = useRef(false)
+  const hasInteractedRef = useRef(false)
   
   // Clave para localStorage
   const FORM_STORAGE_KEY = 'aqualytics_metrics_form_draft'
@@ -135,25 +247,16 @@ export function MetricsForm({
   const form = useForm<MetricFormData>({
     resolver: zodResolver(MetricFormSchema),
     defaultValues: {
-      swimmer_id: 0,
-      competition_id: 0,
-      date: new Date().toISOString().split('T')[0], // Fecha actual
-      distance_id: 0,
-      stroke_id: 0,
-      phase_id: 0,
-      // Valores por defecto para métricas (se completarán en las siguientes subtareas)
-      t15_1: 0,
-      brz_1: 0,
-      t25_1: 0,
-      f1: 0,
-      t15_2: 0,
-      brz_2: 0,
-      t25_2: 0,
-      f2: 0,
+      id_nadador: undefined as any,
+      competition_id: undefined as any,
+      fecha: new Date().toISOString().split('T')[0],
+      prueba_id: undefined as any,
+      phase_id: undefined as any,
       t_total: 0,
-      brz_total: 0
+      brz_total: 0,
+      segments: [],
     },
-    mode: 'onChange' // Validación en tiempo real
+    mode: 'onChange'
   })
 
   const {
@@ -165,8 +268,166 @@ export function MetricsForm({
     control
   } = form
 
-  // Observar valores para mostrar feedback
+  // Configurar el array de campos dinámicos para los segmentos
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "segments",
+  });
+
+  // Observar valores para mostrar feedback y para lógica dinámica
   const currentValues = watch()
+  const selectedPruebaId = watch('prueba_id')
+  const watchedSegments = watch('segments')
+  const watchedTTotal = watch('t_total') 
+  const watchedBrzTotal = watch('brz_total')
+
+  const selectedPrueba = pruebas.find(p => p.id === selectedPruebaId);
+  const selectedDistancia = distancias.find(d => d.distancia_id === (selectedPrueba as any)?.distancias?.distancia_id);
+  const is50mEvent = selectedDistancia?.distancia === 50;
+
+  // Estado para la previsualización de métricas automáticas
+  const [calculationResult, setCalculationResult] = useState<CalculationOutput>({ globalMetrics: {}, perSegmentMetrics: [] });
+
+  const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Lógica para actualizar los segmentos dinámicamente
+  useEffect(() => {
+
+
+    // No procesar si no hay una prueba seleccionada válida o los datos de referencia no han cargado
+    if (!selectedPruebaId || pruebas.length === 0 || distancias.length === 0) {
+
+      if (fields.length > 0) remove();
+      return;
+    }
+
+
+
+    const currentPrueba = pruebas.find(p => p.id === selectedPruebaId);
+    const currentDistancia = distancias.find(d => d.distancia_id === (currentPrueba as any)?.distancias?.distancia_id);
+
+
+
+
+
+    if (currentPrueba && currentDistancia && currentDistancia.distancia && currentPrueba.curso) {
+
+      const splitConfig = getSplitConfiguration(currentDistancia.distancia, currentPrueba.curso as CourseType);
+      
+
+      
+      setDynamicSegments(splitConfig.segments);
+      
+      const currentSegmentCount = fields.length;
+      const newSegmentCount = splitConfig.segments.length;
+
+
+
+      if (currentSegmentCount !== newSegmentCount) {
+
+        // Reemplazar todos los segmentos para evitar inconsistencias
+        remove();
+        const segmentsToAdd = Array.from({ length: newSegmentCount }, () => ({
+          t15: 0,
+          brz: 0,
+          segment_time: 0,
+          f: 0,
+          t25_split: 0
+        }));
+
+        append(segmentsToAdd, { shouldFocus: false });
+
+      } else {
+
+      }
+    } else {
+
+    }
+  }, [selectedPruebaId, pruebas, distancias, append, remove, fields.length]);
+
+  // Auto-rellenar, calcular t_total, brz_total Y previsualizar métricas automáticas
+  useEffect(() => {
+    
+    const segments = currentValues.segments || [];
+    if (selectedPrueba && selectedDistancia) {
+      const is50mCL = selectedDistancia.distancia === 50 && selectedPrueba.curso === 'largo';
+      
+      let totalTime = 0;
+      let totalStrokes = 0;
+      
+      if (segments.length > 0) {
+        if (is50mCL) {
+          totalTime = segments[0]?.segment_time || 0;
+          totalStrokes = segments[0]?.brz || 0;
+        } else {
+          totalTime = segments.reduce((acc, seg) => acc + (seg?.segment_time || 0), 0);
+          totalStrokes = segments.reduce((acc, seg) => acc + (seg?.brz || 0), 0);
+        }
+      }
+      setValue('t_total', totalTime);
+      setValue('brz_total', totalStrokes);
+
+      // Clear previous timeout
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+      }
+
+      // Debounce the API call
+      previewTimeoutRef.current = setTimeout(async () => {
+        // Recolectar datos para cálculo de preview
+        const manualMetricsPayload: ManualMetricsData = {
+          tiempo_total: totalTime,
+          brazadas_totales: totalStrokes,
+          segments: dynamicSegments.map((seg, i) => ({
+            ...(currentValues.segments?.[i] || {}),
+            length: seg.length,
+          }))
+        };
+        
+
+        
+        try {
+          const response = await fetch('/api/preview/calculate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              manual_metrics: manualMetricsPayload,
+              distancia_total: selectedDistancia?.distancia || 50
+            })
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+              setCalculationResult(result.data);
+            } else {
+              setCalculationResult({ globalMetrics: {}, perSegmentMetrics: [] });
+            }
+          } else {
+            logger.error("Error fetching preview calculations");
+            setCalculationResult({ globalMetrics: {}, perSegmentMetrics: [] });
+          }
+        } catch (error) {
+          logger.error("Failed to fetch preview:", error);
+          setCalculationResult({ globalMetrics: {}, perSegmentMetrics: [] });
+        }
+      }, 500); // 500ms debounce
+    }
+
+    return () => {
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+      }
+    }
+  }, [JSON.stringify(watchedSegments), watchedTTotal, watchedBrzTotal, selectedPrueba?.id, selectedDistancia?.distancia_id, dynamicSegments.length]);
+
+  // Limpiar previsualización cuando cambien los campos básicos del formulario
+  useEffect(() => {
+    // Solo limpiar si había una previsualización previa
+    if (calculationResult.globalMetrics && Object.keys(calculationResult.globalMetrics).length > 0) {
+      setCalculationResult({ globalMetrics: {}, perSegmentMetrics: [] });
+    }
+  }, [currentValues.id_nadador, currentValues.competition_id, currentValues.prueba_id, currentValues.phase_id]);
 
   // ===== FUNCIONES DE PERSISTENCIA =====
   
@@ -179,11 +440,16 @@ export function MetricsForm({
       }
       localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formState))
       setAutoSaveStatus('saved')
+      setIsHidingAutoSave(false) // Asegurarse de que no esté ocultándose
       
-      // Limpiar estado después de 2 segundos
-      setTimeout(() => setAutoSaveStatus('idle'), 2000)
+      // Empezar a ocultar después de 2 segundos
+      setTimeout(() => {
+        setIsHidingAutoSave(true)
+        // Restablecer completamente después de la animación de fade-out
+        setTimeout(() => setAutoSaveStatus('idle'), 500) // 500ms para la transición
+      }, 2000)
     } catch (error) {
-      console.error('Error saving form state:', error)
+      logger.error('Error saving form state:', error)
     }
   }
 
@@ -207,7 +473,7 @@ export function MetricsForm({
             }
           })
           
-          console.log('✅ Formulario restaurado desde borrador guardado')
+          logger.info('✅ Formulario restaurado desde borrador guardado')
           return true
         } else {
           // Limpiar estado antiguo
@@ -215,7 +481,7 @@ export function MetricsForm({
         }
       }
     } catch (error) {
-      console.error('Error loading form state:', error)
+      logger.error('Error loading form state:', error)
       localStorage.removeItem(FORM_STORAGE_KEY)
     }
     return false
@@ -226,27 +492,33 @@ export function MetricsForm({
     try {
       localStorage.removeItem(FORM_STORAGE_KEY)
     } catch (error) {
-      console.error('Error clearing form state:', error)
+      logger.error('Error clearing form state:', error)
     }
   }
 
   // Auto-save cuando cambian los valores del formulario
   useEffect(() => {
-    // Debounce para evitar guardar en cada tecla
+    if (!hasInteractedRef.current) return;
+
     const timeoutId = setTimeout(() => {
       // Solo auto-guardar si hay algún valor significativo
       const hasSignificantData = Object.values(currentValues).some(value => 
         value !== 0 && value !== '' && value !== null && value !== undefined
       )
       
-      if (hasSignificantData && autoSaveStatus !== 'saving') {
+      if (hasSignificantData && !isSavingRef.current) {
+        isSavingRef.current = true
         setAutoSaveStatus('saving')
         saveFormState(currentValues)
+        // Permitir un nuevo guardado después de que el ciclo se complete
+        setTimeout(() => {
+            isSavingRef.current = false
+        }, 3000) // Coincide con el ciclo de guardado y ocultado
       }
     }, 1000) // Guardar 1 segundo después del último cambio
 
     return () => clearTimeout(timeoutId)
-  }, [currentValues, autoSaveStatus])
+  }, [currentValues])
 
   // Cargar datos de referencia y restaurar estado del formulario
   useEffect(() => {
@@ -262,7 +534,7 @@ export function MetricsForm({
             setSwimmers(swimmersData.data)
           }
         } else {
-          console.error('Error loading swimmers:', swimmersResponse.statusText)
+          logger.error('Error loading swimmers:', swimmersResponse.statusText)
         }
         
         // Cargar competencias desde Supabase
@@ -281,40 +553,48 @@ export function MetricsForm({
             setCompetitions(formattedCompetitions)
           }
         } else {
-          console.error('Error loading competitions:', competitionsResponse.statusText)
+          logger.error('Error loading competitions:', competitionsResponse.statusText)
         }
 
-        // Cargar distancias desde Supabase
-        const distancesResponse = await fetch('/api/reference?type=distancias')
-        if (distancesResponse.ok) {
-          const distancesData = await distancesResponse.json()
-          if (distancesData.data) {
-            setDistances(distancesData.data)
+        // Cargar Distancias
+        const distanciasResponse = await fetch('/api/reference?type=distancias');
+        if (distanciasResponse.ok) {
+          const distanciasData = await distanciasResponse.json();
+          if (distanciasData.data) {
+            setDistancias(distanciasData.data);
           }
-        } else {
-          console.error('Error loading distances:', distancesResponse.statusText)
         }
-
-        // Cargar estilos desde Supabase
-        const strokesResponse = await fetch('/api/reference?type=estilos')
-        if (strokesResponse.ok) {
-          const strokesData = await strokesResponse.json()
-          if (strokesData.data) {
-            setStrokes(strokesData.data)
-          }
-        } else {
-          console.error('Error loading strokes:', strokesResponse.statusText)
-        }
-
-        // Cargar fases desde Supabase
-        const phasesResponse = await fetch('/api/reference?type=fases')
+        
+        // Cargar Fases
+        const phasesResponse = await fetch('/api/reference?type=fases');
         if (phasesResponse.ok) {
-          const phasesData = await phasesResponse.json()
-          if (phasesData.data) {
-            setPhases(phasesData.data)
+          const phasesData = await phasesResponse.json();
+          logger.info('API Response for Phases:', phasesData);
+          if (phasesData && phasesData.data) {
+            setPhases(phasesData.data);
           }
         } else {
-          console.error('Error loading phases:', phasesResponse.statusText)
+          logger.error('Error loading phases:', phasesResponse.statusText);
+        }
+
+        // Cargar Pruebas desde el nuevo endpoint
+        const pruebasResponse = await fetch('/api/pruebas')
+        if (pruebasResponse.ok) {
+          const pruebasData = await pruebasResponse.json()
+          if (pruebasData.data) {
+            setPruebas(pruebasData.data)
+          }
+        } else {
+          logger.error('Error loading pruebas:', pruebasResponse.statusText)
+        }
+        
+        // Cargar Métricas desde el nuevo endpoint
+        const metricasResponse = await fetch('/api/reference?type=metricas')
+        if (metricasResponse.ok) {
+          const metricasData = await metricasResponse.json()
+          if (metricasData.data) {
+            setMetricas(metricasData.data)
+          }
         }
         
         // Intentar restaurar estado del formulario después de cargar los datos
@@ -328,7 +608,7 @@ export function MetricsForm({
         }, 100)
         
       } catch (error) {
-        console.error('Error loading reference data:', error)
+        logger.error('Error loading reference data:', error)
         setSubmitStatus('error')
         setSubmitMessage('Error al cargar datos de referencia')
       } finally {
@@ -341,60 +621,74 @@ export function MetricsForm({
 
   // ===== MANEJO AVANZADO DE ENVÍO =====
   
-  // Validaciones adicionales antes del envío
   const performAdditionalValidations = (data: MetricFormData): { isValid: boolean; errors: string[] } => {
-    const errors: string[] = []
-    
-    // Validación de consistencia de tiempos
-    const totalSegments = (data.t25_1 || 0) + (data.t25_2 || 0)
-    const totalTime = data.t_total || 0
-    if (totalTime > 0 && Math.abs(totalSegments - totalTime) > 2) {
-      errors.push('Los tiempos de segmentos no son consistentes con el tiempo total')
-    }
-    
-    // Validación de consistencia de brazadas
-    const totalSegmentStrokes = (data.brz_1 || 0) + (data.brz_2 || 0)
-    const totalStrokes = data.brz_total || 0
-    if (totalStrokes > 0 && Math.abs(totalSegmentStrokes - totalStrokes) > 2) {
-      errors.push('Las brazadas de segmentos no son consistentes con el total')
-    }
-    
-    // Validación de tiempos T15 vs T25
-    if (data.t15_1 > 0 && data.t25_1 > 0 && data.t15_1 >= data.t25_1) {
-      errors.push('T15 del primer segmento debe ser menor que T25')
-    }
-    if (data.t15_2 > 0 && data.t25_2 > 0 && data.t15_2 >= data.t25_2) {
-      errors.push('T15 del segundo segmento debe ser menor que T25')
-    }
-    
-    // Validación de campos obligatorios
-    if (!data.swimmer_id || data.swimmer_id === 0) {
-      errors.push('Debe seleccionar un nadador')
-    }
-    if (!data.competition_id || data.competition_id === 0) {
-      errors.push('Debe seleccionar una competencia')
-    }
-    
-    return { isValid: errors.length === 0, errors }
+    // La validación principal ahora la hace Zod.
+    // Esta función puede ser para validaciones complejas que Zod no puede hacer fácilmente,
+    // o puede ser eliminada si Zod ya cubre todos los casos.
+    // Por ahora, la mantenemos simple.
+    return { isValid: true, errors: [] };
   }
   
   // Manejar envío del formulario con validación avanzada
-  const handleFormSubmit = async (data: MetricFormData) => {
+  const handleFormSubmit = async (formData: MetricFormData) => {
     try {
-      setIsInternalSubmitting(true)
-      setSubmitStatus('idle')
-      setSubmitMessage('')
+      setIsInternalSubmitting(true);
       
-      // Realizar validaciones adicionales
-      const validation = performAdditionalValidations(data)
-      if (!validation.isValid) {
-        setSubmitStatus('error')
-        setSubmitMessage(`Errores de validación: ${validation.errors.join(', ')}`)
-        return
+      const metricasPayload: { metrica_id: number; valor: number; segmento?: number }[] = [];
+
+      // Mapeo seguro de nombres a IDs con validación
+      const getMetricaId = (name: string): number | null => {
+        const metrica = metricas.find(m => m.nombre === name);
+        if (!metrica) {
+          logger.warn(`⚠️ Métrica no encontrada: "${name}". Métricas disponibles:`, metricas.map(m => m.nombre));
+          return null;
+        }
+        return metrica.metrica_id;
+      };
+
+      // Función helper para agregar métricas de forma segura
+      const addMetricaSafely = (name: string, valor: number | undefined, segmento?: number) => {
+        const metricaId = getMetricaId(name);
+        if (metricaId !== null && valor !== undefined && valor > 0) {
+          metricasPayload.push({ 
+            metrica_id: metricaId, 
+            valor, 
+            ...(segmento !== undefined && { segmento }) 
+          });
+        }
+      };
+
+      // Procesar métricas por segmento de forma segura
+      formData.segments.forEach((segment, index) => {
+        addMetricaSafely('Tiempo por Tramo', segment.segment_time, index + 1);
+        addMetricaSafely('Brazadas por Tramo', segment.brz, index + 1);
+        addMetricaSafely('Flecha por Tramo', segment.f, index + 1);
+        addMetricaSafely('Tiempo 15m', segment.t15, index + 1);
+        addMetricaSafely('Tiempo 25m', segment.t25_split, index + 1);
+      });
+
+      // Procesar métricas globales
+      addMetricaSafely('Tiempo Total', formData.t_total);
+      addMetricaSafely('Brazadas Totales', formData.brz_total);
+
+      // Validar que tenemos al menos algunas métricas para enviar
+      if (metricasPayload.length === 0) {
+        throw new Error('No se pudieron procesar las métricas. Verifica que las métricas estén disponibles en la base de datos.');
       }
+
+      const finalPayload = {
+        id_nadador: formData.id_nadador,
+        prueba_id: formData.prueba_id,
+        competencia_id: formData.competition_id,
+        fecha: formData.fecha,
+        fase_id: formData.phase_id,
+        metricas: metricasPayload,
+      };
       
-      // Intentar envío
-      await onSubmit(data)
+      logger.info('✅ Final Payload to be sent:', finalPayload);
+      logger.info(`📊 ${metricasPayload.length} métricas procesadas exitosamente`);
+      
+      await onSubmit(finalPayload as any); // Usamos 'any' temporalmente para pasar al handler de la página
       
       // Éxito: limpiar formulario y estado guardado
       setSubmitStatus('success')
@@ -404,29 +698,21 @@ export function MetricsForm({
       // Reset del formulario después de un breve delay
       setTimeout(() => {
         form.reset({
-          swimmer_id: 0,
-          competition_id: 0,
-          date: new Date().toISOString().split('T')[0],
-          distance_id: 0,
-          stroke_id: 0,
-          phase_id: 0,
-          t15_1: 0,
-          brz_1: 0,
-          t25_1: 0,
-          f1: 0,
-          t15_2: 0,
-          brz_2: 0,
-          t25_2: 0,
-          f2: 0,
+          id_nadador: undefined as any,
+          competition_id: undefined as any,
+          fecha: new Date().toISOString().split('T')[0],
+          prueba_id: undefined as any,
+          phase_id: undefined as any,
           t_total: 0,
-          brz_total: 0
+          brz_total: 0,
+          segments: [],
         })
         setSubmitStatus('idle')
         setSubmitMessage('')
       }, 2000)
       
     } catch (error) {
-      console.error('Error submitting metrics form:', error)
+      logger.error('Error submitting metrics form:', error)
       setSubmitStatus('error')
       setSubmitMessage(
         error instanceof Error 
@@ -460,19 +746,14 @@ export function MetricsForm({
     label: competition.competencia
   }))
 
-  const distanceOptions = distances.map(distance => ({
-    value: distance.distancia_id.toString(),
-    label: `${distance.distancia}m`
-  }))
-
-  const strokeOptions = strokes.map(stroke => ({
-    value: stroke.estilo_id.toString(),
-    label: stroke.estilo
+  const pruebaOptions = pruebas.map(prueba => ({
+    value: prueba.id.toString(),
+    label: `${prueba.nombre} (${prueba.curso === 'largo' ? 'CL' : 'CC'})`
   }))
 
   const phaseOptions = phases.map(phase => ({
     value: phase.fase_id.toString(),
-    label: phase.fase
+    label: phase.nombre
   }))
 
   if (isLoadingData) {
@@ -487,903 +768,283 @@ export function MetricsForm({
   }
 
   return (
-    <Card className={`p-6 ${className}`}>
-      {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <MetricsIcon />
-          {title}
-        </h2>
-        <p className="text-muted-foreground mt-1">
-          Ingresa las métricas de rendimiento de natación con validación en tiempo real
-        </p>
-      </div>
-
-      {/* Formulario */}
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-        
-        {/* Sección: Información Básica */}
-        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <SwimmerIcon />
-            Información Básica
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            
-            {/* Nadador */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1 flex items-center gap-2">
-                <SwimmerIcon />
-                Nadador <span className="text-red-500">*</span>
-              </label>
-              <Controller
-                name="swimmer_id"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value?.toString() || ''}
-                    onChange={(value) => field.onChange(Number(value))}
-                    placeholder="Seleccionar nadador..."
-                    options={swimmerOptions}
-                    variant="phoenix"
-                    size="md"
-                    fullWidth
-                    error={errors.swimmer_id?.message}
-                    disabled={isSubmitting}
-                  />
-                )}
-              />
-            </div>
-
-            {/* Competencia */}
-            <div>
-              <Controller
-                name="competition_id"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value?.toString() || ''}
-                    onChange={(value) => field.onChange(Number(value))}
-                    label="Competencia"
-                    placeholder="Seleccionar competencia..."
-                    options={competitionOptions}
-                    variant="warm"
-                    size="md"
-                    fullWidth
-                    error={errors.competition_id?.message}
-                    disabled={isSubmitting}
-                  />
-                )}
-              />
-            </div>
-
-            {/* Fecha */}
-            <div>
-              <Input
-                {...register('date')}
-                type="date"
-                label="Fecha"
-                variant="default"
-                size="md"
-                fullWidth
-                required
-                startIcon={<CalendarIcon />}
-                error={errors.date?.message}
-                disabled={isSubmitting}
-                helperText="Fecha del registro"
-              />
-            </div>
-
-            {/* Distancia */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1 flex items-center gap-2">
-                <DistanceIcon />
-                Distancia <span className="text-red-500">*</span>
-              </label>
-              <Controller
-                name="distance_id"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value?.toString() || ''}
-                    onChange={(value) => field.onChange(Number(value))}
-                    placeholder="Seleccionar distancia..."
-                    options={distanceOptions}
-                    variant="phoenix"
-                    size="md"
-                    fullWidth
-                    error={errors.distance_id?.message}
-                    disabled={isSubmitting}
-                  />
-                )}
-              />
-            </div>
-
-            {/* Estilo */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1 flex items-center gap-2">
-                <StyleIcon />
-                Estilo <span className="text-red-500">*</span>
-              </label>
-              <Controller
-                name="stroke_id"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value?.toString() || ''}
-                    onChange={(value) => field.onChange(Number(value))}
-                    placeholder="Seleccionar estilo..."
-                    options={strokeOptions}
-                    variant="warm"
-                    size="md"
-                    fullWidth
-                    error={errors.stroke_id?.message}
-                    disabled={isSubmitting}
-                  />
-                )}
-              />
-            </div>
-
-            {/* Fase */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1 flex items-center gap-2">
-                <PhaseIcon />
-                Fase <span className="text-red-500">*</span>
-              </label>
-              <Controller
-                name="phase_id"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value?.toString() || ''}
-                    onChange={(value) => field.onChange(Number(value))}
-                    placeholder="Seleccionar fase..."
-                    options={phaseOptions}
-                    variant="default"
-                    size="md"
-                    fullWidth
-                    error={errors.phase_id?.message}
-                    disabled={isSubmitting}
-                  />
-                )}
-              />
-            </div>
-          </div>
+    <FormProvider {...form}>
+      <Card className={`p-6 ${className}`}>
+        {/* Header */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <MetricsIcon />
+            {title}
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Ingresa las métricas de rendimiento de natación con validación en tiempo real
+          </p>
         </div>
 
-        {/* Sección: Métricas del Primer Segmento (25m) */}
-        <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-700">
-          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <svg className="h-5 w-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            Primer Segmento (0-25m)
-          </h3>
+        {/* Formulario */}
+        <form 
+          onBlur={() => { if (!hasInteractedRef.current) hasInteractedRef.current = true; }}
+          onSubmit={form.handleSubmit(handleFormSubmit)} 
+          className="space-y-6"
+        >
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            {/* T15_1 - Tiempo 15m */}
-            <div>
-              <Input
-                {...register('t15_1', { 
-                  valueAsNumber: true,
-                  setValueAs: (value) => value === '' ? 0 : Number(value)
-                })}
-                type="number"
-                step="0.01"
-                min="3.00"
-                max="30.00"
-                label="T15 (1)"
-                placeholder="15.25"
-                variant="phoenix"
-                size="md"
-                fullWidth
-                required
-                startIcon={
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
-                error={errors.t15_1?.message}
-                disabled={isSubmitting}
-                helperText="Tiempo 15m (seg)"
-              />
-            </div>
-
-            {/* BRZ_1 - Brazadas */}
-            <div>
-              <Input
-                {...register('brz_1', { 
-                  valueAsNumber: true,
-                  setValueAs: (value) => value === '' ? 0 : Number(value)
-                })}
-                type="number"
-                min="1"
-                max="100"
-                label="BRZ (1)"
-                placeholder="12"
-                variant="warm"
-                size="md"
-                fullWidth
-                required
-                startIcon={
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-                  </svg>
-                }
-                error={errors.brz_1?.message}
-                disabled={isSubmitting}
-                helperText="Brazadas (#)"
-              />
-            </div>
-
-            {/* T25_1 - Tiempo 25m */}
-            <div>
-              <Input
-                {...register('t25_1', { 
-                  valueAsNumber: true,
-                  setValueAs: (value) => value === '' ? 0 : Number(value)
-                })}
-                type="number"
-                step="0.01"
-                min="5.00"
-                max="180.00"
-                label="T25 (1)"
-                placeholder="28.50"
-                variant="phoenix"
-                size="md"
-                fullWidth
-                required
-                startIcon={
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
-                error={errors.t25_1?.message}
-                disabled={isSubmitting}
-                helperText="Tiempo 25m (seg)"
-              />
-            </div>
-
-            {/* F1 - Flecha/Distancia submarina */}
-            <div>
-              <Input
-                {...register('f1', { 
-                  valueAsNumber: true,
-                  setValueAs: (value) => value === '' ? 0 : Number(value)
-                })}
-                type="number"
-                step="0.01"
-                min="0.00"
-                max="15.00"
-                label="F1"
-                placeholder="8.50"
-                variant="sunset"
-                size="md"
-                fullWidth
-                required
-                startIcon={
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
-                }
-                error={errors.f1?.message}
-                disabled={isSubmitting}
-                helperText="Flecha (metros)"
-              />
-            </div>
-          </div>
-
-          {/* Preview de cálculos en tiempo real para el primer segmento */}
-          {currentValues.t25_1 > 0 && (
-            <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-orange-200 dark:border-orange-800">
-              <h4 className="text-sm font-semibold text-orange-700 dark:text-orange-300 mb-2">
-                📊 Cálculos en Tiempo Real - Segmento 1
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Velocidad:</span>
-                  <span className="font-mono text-foreground">
-                    {currentValues.t25_1 > 0 ? (25 / currentValues.t25_1).toFixed(2) : '0.00'} m/s
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Dist. por brazada:</span>
-                  <span className="font-mono text-foreground">
-                    {currentValues.brz_1 > 0 ? ((25 - (currentValues.f1 || 0)) / currentValues.brz_1).toFixed(2) : '0.00'} m/brz
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">T15 vs T25:</span>
-                  <span className={`font-mono ${currentValues.t15_1 < currentValues.t25_1 ? 'text-green-600' : 'text-red-500'}`}>
-                    {currentValues.t15_1 > 0 && currentValues.t25_1 > 0 
-                      ? (currentValues.t15_1 < currentValues.t25_1 ? '✓ Válido' : '⚠ T15 ≥ T25')
-                      : '--'
-                    }
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sección: Métricas del Segundo Segmento (25-50m) */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
-          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <svg className="h-5 w-5 text-phoenix-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            Segundo Segmento (25-50m)
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            {/* T15_2 - Tiempo 15m */}
-            <div>
-              <Input
-                {...register('t15_2', { 
-                  valueAsNumber: true,
-                  setValueAs: (value) => value === '' ? 0 : Number(value)
-                })}
-                type="number"
-                step="0.01"
-                min="3.00"
-                max="30.00"
-                label="T15 (2)"
-                placeholder="16.75"
-                variant="phoenix"
-                size="md"
-                fullWidth
-                required
-                startIcon={
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
-                error={errors.t15_2?.message}
-                disabled={isSubmitting}
-                helperText="Tiempo 15m (seg)"
-              />
-            </div>
-
-            {/* BRZ_2 - Brazadas */}
-            <div>
-              <Input
-                {...register('brz_2', { 
-                  valueAsNumber: true,
-                  setValueAs: (value) => value === '' ? 0 : Number(value)
-                })}
-                type="number"
-                min="1"
-                max="100"
-                label="BRZ (2)"
-                placeholder="14"
-                variant="warm"
-                size="md"
-                fullWidth
-                required
-                startIcon={
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-                  </svg>
-                }
-                error={errors.brz_2?.message}
-                disabled={isSubmitting}
-                helperText="Brazadas (#)"
-              />
-            </div>
-
-            {/* T25_2 - Tiempo 25m */}
-            <div>
-              <Input
-                {...register('t25_2', { 
-                  valueAsNumber: true,
-                  setValueAs: (value) => value === '' ? 0 : Number(value)
-                })}
-                type="number"
-                step="0.01"
-                min="5.00"
-                max="180.00"
-                label="T25 (2)"
-                placeholder="30.25"
-                variant="phoenix"
-                size="md"
-                fullWidth
-                required
-                startIcon={
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
-                error={errors.t25_2?.message}
-                disabled={isSubmitting}
-                helperText="Tiempo 25m (seg)"
-              />
-            </div>
-
-            {/* F2 - Flecha/Distancia submarina */}
-            <div>
-              <Input
-                {...register('f2', { 
-                  valueAsNumber: true,
-                  setValueAs: (value) => value === '' ? 0 : Number(value)
-                })}
-                type="number"
-                step="0.01"
-                min="0.00"
-                max="15.00"
-                label="F2"
-                placeholder="7.25"
-                variant="sunset"
-                size="md"
-                fullWidth
-                required
-                startIcon={
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
-                }
-                error={errors.f2?.message}
-                disabled={isSubmitting}
-                helperText="Flecha (metros)"
-              />
-            </div>
-          </div>
-
-          {/* Preview de cálculos en tiempo real para el segundo segmento */}
-          {currentValues.t25_2 > 0 && (
-            <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-800">
-              <h4 className="text-sm font-semibold text-phoenix-blue dark:text-phoenix-blue mb-2">
-                📊 Cálculos en Tiempo Real - Segmento 2
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Velocidad:</span>
-                  <span className="font-mono text-foreground">
-                    {currentValues.t25_2 > 0 ? (25 / currentValues.t25_2).toFixed(2) : '0.00'} m/s
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Dist. por brazada:</span>
-                  <span className="font-mono text-foreground">
-                    {currentValues.brz_2 > 0 ? ((25 - (currentValues.f2 || 0)) / currentValues.brz_2).toFixed(2) : '0.00'} m/brz
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">T15 vs T25:</span>
-                  <span className={`font-mono ${currentValues.t15_2 < currentValues.t25_2 ? 'text-green-600' : 'text-red-500'}`}>
-                    {currentValues.t15_2 > 0 && currentValues.t25_2 > 0 
-                      ? (currentValues.t15_2 < currentValues.t25_2 ? '✓ Válido' : '⚠ T15 ≥ T25')
-                      : '--'
-                    }
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Comparación entre Segmentos */}
-        {currentValues.t25_1 > 0 && currentValues.t25_2 > 0 && (
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-700">
+          {/* Sección: Información Básica */}
+          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <svg className="h-5 w-5 text-phoenix-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              Comparación entre Segmentos
+              <SwimmerIcon />
+              Información Básica
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               
-              {/* Comparación de Velocidades */}
-              <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-                <h5 className="font-medium text-phoenix-purple dark:text-phoenix-purple mb-2">Velocidades</h5>
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Seg 1:</span>
-                    <span className="font-mono">{(25 / currentValues.t25_1).toFixed(2)} m/s</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Seg 2:</span>
-                    <span className="font-mono">{(25 / currentValues.t25_2).toFixed(2)} m/s</span>
-                  </div>
-                  <div className="flex justify-between border-t pt-1">
-                    <span className="text-muted-foreground">Diferencia:</span>
-                    <span className={`font-mono ${(25 / currentValues.t25_2) > (25 / currentValues.t25_1) ? 'text-green-600' : 'text-red-500'}`}>
-                      {((25 / currentValues.t25_2) - (25 / currentValues.t25_1) > 0 ? '+' : '')}{((25 / currentValues.t25_2) - (25 / currentValues.t25_1)).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
+              {/* Nadador */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1 flex items-center gap-2">
+                  <SwimmerIcon />
+                  Nadador <span className="text-red-500">*</span>
+                </label>
+                <Controller
+                  name="id_nadador"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value ? field.value.toString() : ''}
+                      onChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                      placeholder="Seleccionar nadador..."
+                      options={swimmerOptions}
+                      variant="phoenix"
+                      size="md"
+                      fullWidth
+                      error={errors.id_nadador?.message}
+                      disabled={isSubmitting}
+                    />
+                  )}
+                />
               </div>
 
-              {/* Comparación de Brazadas */}
-              <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-                <h5 className="font-medium text-phoenix-purple dark:text-phoenix-purple mb-2">Brazadas</h5>
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Seg 1:</span>
-                    <span className="font-mono">{currentValues.brz_1} brz</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Seg 2:</span>
-                    <span className="font-mono">{currentValues.brz_2} brz</span>
-                  </div>
-                  <div className="flex justify-between border-t pt-1">
-                    <span className="text-muted-foreground">Diferencia:</span>
-                    <span className={`font-mono ${currentValues.brz_2 < currentValues.brz_1 ? 'text-green-600' : 'text-red-500'}`}>
-                      {currentValues.brz_2 - currentValues.brz_1 > 0 ? '+' : ''}{currentValues.brz_2 - currentValues.brz_1}
-                    </span>
-                  </div>
-                </div>
+              {/* Competencia */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Competencia <span className="text-red-500">*</span>
+                </label>
+                <Controller
+                  name="competition_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value ? field.value.toString() : ''}
+                      onChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                      placeholder="Seleccionar competencia..."
+                      options={competitionOptions}
+                      variant="warm"
+                      size="md"
+                      fullWidth
+                      error={errors.competition_id?.message}
+                      disabled={isSubmitting}
+                    />
+                  )}
+                />
               </div>
 
-              {/* Comparación de Flechas */}
-              <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-                <h5 className="font-medium text-phoenix-purple dark:text-phoenix-purple mb-2">Flechas</h5>
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">F1:</span>
-                    <span className="font-mono">{currentValues.f1.toFixed(2)}m</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">F2:</span>
-                    <span className="font-mono">{currentValues.f2.toFixed(2)}m</span>
-                  </div>
-                  <div className="flex justify-between border-t pt-1">
-                    <span className="text-muted-foreground">Promedio:</span>
-                    <span className="font-mono text-phoenix-purple">
-                      {((currentValues.f1 + currentValues.f2) / 2).toFixed(2)}m
-                    </span>
-                  </div>
-                </div>
+              {/* Fecha */}
+              <div>
+                <Input
+                  {...register('fecha')}
+                  type="date"
+                  label="Fecha"
+                  variant="default"
+                  size="md"
+                  fullWidth
+                  required
+                  startIcon={<CalendarIcon />}
+                  error={errors.fecha?.message}
+                  disabled={isSubmitting}
+                  helperText="Fecha del registro"
+                />
               </div>
 
-              {/* Consistencia General */}
-              <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-                <h5 className="font-medium text-phoenix-purple dark:text-phoenix-purple mb-2">Consistencia</h5>
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Velocidad:</span>
-                    <span className={`font-mono ${Math.abs((25 / currentValues.t25_2) - (25 / currentValues.t25_1)) < 0.3 ? 'text-green-600' : 'text-yellow-600'}`}>
-                      {Math.abs((25 / currentValues.t25_2) - (25 / currentValues.t25_1)) < 0.3 ? '✓ Buena' : '⚠ Variable'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Brazadas:</span>
-                    <span className={`font-mono ${Math.abs(currentValues.brz_2 - currentValues.brz_1) <= 2 ? 'text-green-600' : 'text-yellow-600'}`}>
-                      {Math.abs(currentValues.brz_2 - currentValues.brz_1) <= 2 ? '✓ Estable' : '⚠ Variable'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Estado:</span>
-                    <span className="font-mono text-phoenix-purple">
-                      {currentValues.t25_2 > currentValues.t25_1 ? '📈 Fatiga' : '⚡ Mejora'}
-                    </span>
-                  </div>
-                </div>
+              {/* Prueba */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-foreground mb-1 flex items-center gap-2">
+                  <DistanceIcon />
+                  Prueba <span className="text-red-500">*</span>
+                </label>
+                <Controller
+                  name="prueba_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value ? field.value.toString() : ''}
+                      onChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                      placeholder="Seleccionar prueba..."
+                      options={pruebaOptions}
+                      variant="phoenix"
+                      size="md"
+                      fullWidth
+                      error={errors.prueba_id?.message}
+                      disabled={isSubmitting}
+                    />
+                  )}
+                />
+              </div>
+
+              {/* Fase */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1 flex items-center gap-2">
+                  <PhaseIcon />
+                  Fase <span className="text-red-500">*</span>
+                </label>
+                <Controller
+                  name="phase_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value ? field.value.toString() : ''}
+                      onChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                      placeholder="Seleccionar fase..."
+                      options={phaseOptions}
+                      variant="default"
+                      size="md"
+                      fullWidth
+                      error={errors.phase_id?.message}
+                      disabled={isSubmitting}
+                    />
+                  )}
+                />
               </div>
             </div>
           </div>
-        )}
 
-        {/* Sección: Métricas Globales y Validación */}
-        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Métricas Globales y Validación
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Sección de Métricas por Segmento (Ahora Dinámica y Real) */}
+          <div className="space-y-4">
+
             
-            {/* T_TOTAL - Tiempo Total */}
-            <div>
-              <Input
-                {...register('t_total', { 
-                  valueAsNumber: true,
-                  setValueAs: (value) => value === '' ? 0 : Number(value)
-                })}
-                type="number"
-                step="0.01"
-                min="10.00"
-                max="300.00"
-                label="Tiempo Total"
-                placeholder="57.25"
-                variant="phoenix"
-                size="md"
-                fullWidth
-                required
-                startIcon={
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
-                error={errors.t_total?.message}
-                disabled={isSubmitting}
-                helperText="Tiempo total de la prueba (seg)"
+            {fields.length === 0 && (
+              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 text-center">
+                <p className="text-gray-600 dark:text-gray-400">
+                  Selecciona una prueba para ver las opciones de métricas por segmento
+                </p>
+              </div>
+            )}
+            
+            {fields.map((field, index) => (
+              <SegmentInputGroup
+                key={field.id}
+                segmentIndex={index}
+                segment={dynamicSegments[index]}
+                distancia={selectedDistancia}
+                prueba={selectedPrueba}
               />
-            </div>
-
-            {/* BRZ_TOTAL - Brazadas Totales */}
-            <div>
-              <Input
-                {...register('brz_total', { 
-                  valueAsNumber: true,
-                  setValueAs: (value) => value === '' ? 0 : Number(value)
-                })}
-                type="number"
-                min="2"
-                max="200"
-                label="Brazadas Totales"
-                placeholder="24"
-                variant="warm"
-                size="md"
-                fullWidth
-                required
-                startIcon={
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-                  </svg>
-                }
-                error={errors.brz_total?.message}
-                disabled={isSubmitting}
-                helperText="Total de brazadas en la prueba"
-              />
-            </div>
+            ))}
           </div>
 
-          {/* Validaciones y Cálculos Globales */}
-          {(currentValues.t_total > 0 || currentValues.brz_total > 0) && (
-            <div className="mt-4 space-y-4">
-              
-              {/* Panel de Validación Cruzada */}
-              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                <h4 className="text-sm font-semibold text-green-700 dark:text-green-300 mb-3 flex items-center gap-2">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Validación Cruzada de Consistencia
-                </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  
-                  {/* Validación de Tiempos */}
-                  {currentValues.t_total > 0 && currentValues.t25_1 > 0 && currentValues.t25_2 > 0 && (
-                    <div className="space-y-2">
-                      <h5 className="font-medium text-foreground">Consistencia de Tiempos</h5>
-                      <div className="space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Suma segmentos:</span>
-                          <span className="font-mono">{(currentValues.t25_1 + currentValues.t25_2).toFixed(2)}s</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Tiempo total:</span>
-                          <span className="font-mono">{currentValues.t_total.toFixed(2)}s</span>
-                        </div>
-                        <div className="flex justify-between border-t pt-1">
-                          <span className="text-muted-foreground">Diferencia:</span>
-                          <span className={`font-mono ${Math.abs(currentValues.t_total - (currentValues.t25_1 + currentValues.t25_2)) <= 2 ? 'text-green-600' : 'text-red-500'}`}>
-                            {Math.abs(currentValues.t_total - (currentValues.t25_1 + currentValues.t25_2)) <= 2 
-                              ? '✓ Consistente' 
-                              : `⚠ ±${Math.abs(currentValues.t_total - (currentValues.t25_1 + currentValues.t25_2)).toFixed(2)}s`
-                            }
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Validación de Brazadas */}
-                  {currentValues.brz_total > 0 && currentValues.brz_1 > 0 && currentValues.brz_2 > 0 && (
-                    <div className="space-y-2">
-                      <h5 className="font-medium text-foreground">Consistencia de Brazadas</h5>
-                      <div className="space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Suma segmentos:</span>
-                          <span className="font-mono">{currentValues.brz_1 + currentValues.brz_2} brz</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Total registrado:</span>
-                          <span className="font-mono">{currentValues.brz_total} brz</span>
-                        </div>
-                        <div className="flex justify-between border-t pt-1">
-                          <span className="text-muted-foreground">Diferencia:</span>
-                          <span className={`font-mono ${Math.abs(currentValues.brz_total - (currentValues.brz_1 + currentValues.brz_2)) <= 2 ? 'text-green-600' : 'text-red-500'}`}>
-                            {Math.abs(currentValues.brz_total - (currentValues.brz_1 + currentValues.brz_2)) <= 2 
-                              ? '✓ Consistente' 
-                              : `⚠ ±${Math.abs(currentValues.brz_total - (currentValues.brz_1 + currentValues.brz_2))}`
-                            }
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+          {/* Sección de Previsualización de Cálculos (Unificada) */}
+          <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <svg className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              Previsualización de Cálculos
+            </h3>
+            <CalculationPreview 
+              calculation={calculationResult}
+              totalTime={watch('t_total')} 
+              totalStrokes={watch('brz_total')}
+              segments={dynamicSegments}
+            />
+          </div>
 
-              {/* Panel de Métricas de Rendimiento Global */}
-              {currentValues.t_total > 0 && currentValues.brz_total > 0 && (
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                  <h4 className="text-sm font-semibold text-green-700 dark:text-green-300 mb-3 flex items-center gap-2">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    Análisis de Rendimiento Global
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    
-                    {/* Velocidad Global */}
-                    <div className="space-y-2">
-                      <h5 className="font-medium text-foreground">Velocidad Global</h5>
-                      <div className="space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Velocidad media:</span>
-                          <span className="font-mono text-green-600 font-semibold">
-                            {(50 / currentValues.t_total).toFixed(2)} m/s
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Ritmo/100m:</span>
-                          <span className="font-mono text-foreground">
-                            {(currentValues.t_total * 2).toFixed(2)}s
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+          {/* Bloque de depuración temporal */}
+          {process.env.NODE_ENV === 'development' && Object.keys(errors).length > 0 && (
+            <Card className="p-4 mt-6 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700">
+              <h4 className="font-bold text-red-700 dark:text-red-300">Errores de Validación Activos:</h4>
+              <pre className="text-xs text-red-600 dark:text-red-400 mt-2 whitespace-pre-wrap">
+                {JSON.stringify(errors, null, 2)}
+              </pre>
+            </Card>
+          )}
 
-                    {/* Eficiencia de Brazada Global */}
-                    <div className="space-y-2">
-                      <h5 className="font-medium text-foreground">Eficiencia Global</h5>
-                      <div className="space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Dist./brazada:</span>
-                          <span className="font-mono text-green-600 font-semibold">
-                            {((50 - (currentValues.f1 || 0) - (currentValues.f2 || 0)) / currentValues.brz_total).toFixed(2)} m/brz
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Freq. brazada:</span>
-                          <span className="font-mono text-foreground">
-                            {(currentValues.brz_total / currentValues.t_total).toFixed(2)} brz/s
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Índices de Rendimiento */}
-                    <div className="space-y-2">
-                      <h5 className="font-medium text-foreground">Índices</h5>
-                      <div className="space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Índice SWOLF:</span>
-                          <span className="font-mono text-green-600 font-semibold">
-                            {(currentValues.t_total + currentValues.brz_total).toFixed(0)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Eficiencia %:</span>
-                          <span className="font-mono text-foreground">
-                            {(((50 - (currentValues.f1 || 0) - (currentValues.f2 || 0)) / currentValues.brz_total) * 100 / 50).toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+          {/* Sección de Feedback y Estado */}
+          <div className="space-y-3">
+            
+            {/* Contenedor del Indicador de Auto-Save para evitar layout shift */}
+            <div className="h-6 flex items-center justify-center">
+              <div className={`transition-opacity duration-500 ${isHidingAutoSave ? 'opacity-0' : 'opacity-100'}`}>
+                {autoSaveStatus === 'saving' ? (
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+                    <span className="text-blue-600 dark:text-blue-400">Guardando borrador...</span>
                   </div>
-                </div>
-              )}
-
-              {/* Advertencias de Inconsistencia */}
-              {((currentValues.t_total > 0 && currentValues.t25_1 > 0 && currentValues.t25_2 > 0 && 
-                 Math.abs(currentValues.t_total - (currentValues.t25_1 + currentValues.t25_2)) > 2) ||
-                (currentValues.brz_total > 0 && currentValues.brz_1 > 0 && currentValues.brz_2 > 0 && 
-                 Math.abs(currentValues.brz_total - (currentValues.brz_1 + currentValues.brz_2)) > 2)) && (
-                <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
-                  <h5 className="text-sm font-semibold text-red-700 dark:text-red-300 mb-2 flex items-center gap-2">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                ) : autoSaveStatus === 'saved' ? (
+                  <div className="flex items-center gap-2 text-sm">
+                    <svg className="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-green-600 dark:text-green-400">Borrador guardado automáticamente</span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            
+            {/* Feedback de Envío */}
+            {submitStatus !== 'idle' && (
+              <div className={`p-3 rounded-lg border ${
+                submitStatus === 'success' 
+                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+                  : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {submitStatus === 'success' ? (
+                    <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
                     </svg>
-                    ⚠ Advertencias de Inconsistencia
-                  </h5>
-                  <ul className="text-sm text-red-600 dark:text-red-400 space-y-1">
-                    {currentValues.t_total > 0 && currentValues.t25_1 > 0 && currentValues.t25_2 > 0 && 
-                     Math.abs(currentValues.t_total - (currentValues.t25_1 + currentValues.t25_2)) > 2 && (
-                      <li>• Los tiempos de segmentos no coinciden con el tiempo total (diferencia: {Math.abs(currentValues.t_total - (currentValues.t25_1 + currentValues.t25_2)).toFixed(2)}s)</li>
-                    )}
-                    {currentValues.brz_total > 0 && currentValues.brz_1 > 0 && currentValues.brz_2 > 0 && 
-                     Math.abs(currentValues.brz_total - (currentValues.brz_1 + currentValues.brz_2)) > 2 && (
-                      <li>• Las brazadas de segmentos no coinciden con el total (diferencia: {Math.abs(currentValues.brz_total - (currentValues.brz_1 + currentValues.brz_2))} brazadas)</li>
-                    )}
-                  </ul>
+                  )}
+                  <span className={`text-sm font-medium ${
+                    submitStatus === 'success' 
+                      ? 'text-green-700 dark:text-green-300' 
+                      : 'text-red-700 dark:text-red-300'
+                  }`}>
+                    {submitMessage}
+                  </span>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Sección de Feedback y Estado */}
-        <div className="space-y-3">
-          
-          {/* Indicador de Auto-Save */}
-          {autoSaveStatus !== 'idle' && (
-            <div className="flex items-center justify-center gap-2 text-sm">
-              {autoSaveStatus === 'saving' && (
-                <>
-                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                  <span className="text-blue-600 dark:text-blue-400">Guardando borrador...</span>
-                </>
-              )}
-              {autoSaveStatus === 'saved' && (
-                <>
-                  <svg className="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-green-600 dark:text-green-400">Borrador guardado automáticamente</span>
-                </>
-              )}
-            </div>
-          )}
-          
-          {/* Feedback de Envío */}
-          {submitStatus !== 'idle' && (
-            <div className={`p-3 rounded-lg border ${
-              submitStatus === 'success' 
-                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
-                : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-            }`}>
-              <div className="flex items-center gap-2">
-                {submitStatus === 'success' ? (
-                  <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                ) : (
-                  <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                )}
-                <span className={`text-sm font-medium ${
-                  submitStatus === 'success' 
-                    ? 'text-green-700 dark:text-green-300' 
-                    : 'text-red-700 dark:text-red-300'
-                }`}>
-                  {submitMessage}
-                </span>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Botones de acción */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button
-            type="submit"
-            variant="phoenix"
-            size="lg"
-            fullWidth
-            startIcon={<SaveIcon />}
-            loading={isInternalSubmitting || isSubmitting}
-            disabled={!isValid || isInternalSubmitting || isSubmitting}
-          >
-            {(isInternalSubmitting || isSubmitting) ? 'Guardando...' : 'Guardar Métricas'}
-          </Button>
-          
-          {showCancel && (
+          {/* Botones de acción */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
             <Button
-              type="button"
-              variant="outline"
+              type="submit"
+              variant="phoenix"
               size="lg"
-              onClick={handleCancel}
-              startIcon={<CancelIcon />}
-              disabled={isInternalSubmitting || isSubmitting}
-              className="sm:w-auto w-full"
+              fullWidth
+              startIcon={<SaveIcon />}
+              loading={isInternalSubmitting || isSubmitting}
+              disabled={!isValid || isInternalSubmitting || isSubmitting}
             >
-              Cancelar
+              {(isInternalSubmitting || isSubmitting) ? 'Guardando...' : 'Guardar Métricas'}
             </Button>
-          )}
-        </div>
-      </form>
-    </Card>
+            
+            {showCancel && (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={handleCancel}
+                startIcon={<CancelIcon />}
+                disabled={isInternalSubmitting || isSubmitting}
+                className="sm:w-auto w-full"
+              >
+                Cancelar
+              </Button>
+            )}
+          </div>
+        </form>
+      </Card>
+    </FormProvider>
   )
 } 

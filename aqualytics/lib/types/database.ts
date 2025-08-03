@@ -203,6 +203,165 @@ export type Database = {
           },
         ]
       }
+      pruebas: {
+        Row: {
+          id: number
+          nombre: string
+          distancia_id: number
+          estilo_id: number
+          curso: 'largo' | 'corto'
+          tramos_totales: number | null
+          distancia_por_tramo: number | null
+        }
+        Insert: {
+          id?: number
+          nombre: string
+          distancia_id: number
+          estilo_id: number
+          curso: 'largo' | 'corto'
+          tramos_totales?: number | null
+          distancia_por_tramo?: number | null
+        }
+        Update: {
+          id?: number
+          nombre?: string
+          distancia_id?: number
+          estilo_id?: number
+          curso?: 'largo' | 'corto'
+          tramos_totales?: number | null
+          distancia_por_tramo?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pruebas_distancia_id_fkey"
+            columns: ["distancia_id"]
+            isOneToOne: false
+            referencedRelation: "distancias"
+            referencedColumns: ["distancia_id"]
+          },
+          {
+            foreignKeyName: "pruebas_estilo_id_fkey"
+            columns: ["estilo_id"]
+            isOneToOne: false
+            referencedRelation: "estilos"
+            referencedColumns: ["estilo_id"]
+          }
+        ]
+      }
+      registros_completos: {
+        Row: {
+          id: number
+          id_nadador: number
+          prueba_id: number
+          competencia_id: number | null
+          fecha: string
+          fase_id: number | null
+          // Métricas manuales (10)
+          t15_1: number | null
+          brz_1: number | null
+          t25_1: number | null
+          f1: number | null
+          t15_2: number | null
+          brz_2: number | null
+          t25_2: number | null
+          f2: number | null
+          t_total: number | null
+          brz_total: number | null
+          // Métricas calculadas (6)
+          velocidad_promedio: number | null
+          ritmo_brazada: number | null
+          eficiencia_nado: number | null
+          consistencia_tramos: number | null
+          indice_fatiga: number | null
+          potencia_relativa: number | null
+          // Metadata
+          completitud_porcentaje: number
+          metricas_registradas: number
+          metodo_registro: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          id_nadador: number
+          prueba_id: number
+          competencia_id?: number | null
+          fecha: string
+          fase_id?: number | null
+          // Métricas manuales (opcionales en insert)
+          t15_1?: number | null
+          brz_1?: number | null
+          t25_1?: number | null
+          f1?: number | null
+          t15_2?: number | null
+          brz_2?: number | null
+          t25_2?: number | null
+          f2?: number | null
+          t_total?: number | null
+          brz_total?: number | null
+          // Metadata
+          completitud_porcentaje?: number
+          metricas_registradas?: number
+          metodo_registro?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          id_nadador?: number
+          prueba_id?: number
+          competencia_id?: number | null
+          fecha?: string
+          fase_id?: number | null
+          // Métricas manuales
+          t15_1?: number | null
+          brz_1?: number | null
+          t25_1?: number | null
+          f1?: number | null
+          t15_2?: number | null
+          brz_2?: number | null
+          t25_2?: number | null
+          f2?: number | null
+          t_total?: number | null
+          brz_total?: number | null
+          // Metadata
+          completitud_porcentaje?: number
+          metricas_registradas?: number
+          metodo_registro?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registros_completos_id_nadador_fkey"
+            columns: ["id_nadador"]
+            isOneToOne: false
+            referencedRelation: "nadadores"
+            referencedColumns: ["id_nadador"]
+          },
+          {
+            foreignKeyName: "registros_completos_prueba_id_fkey"
+            columns: ["prueba_id"]
+            isOneToOne: false
+            referencedRelation: "pruebas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registros_completos_competencia_id_fkey"
+            columns: ["competencia_id"]
+            isOneToOne: false
+            referencedRelation: "competencias"
+            referencedColumns: ["competencia_id"]
+          },
+          {
+            foreignKeyName: "registros_completos_fase_id_fkey"
+            columns: ["fase_id"]
+            isOneToOne: false
+            referencedRelation: "fases"
+            referencedColumns: ["fase_id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -303,10 +462,29 @@ export type Estilo = Tables<'estilos'>
 export type Fase = Tables<'fases'>
 export type Parametro = Tables<'parametros'>
 export type Registro = Tables<'registros'>
+export type Prueba = Tables<'pruebas'>
+export type RegistroCompletoTabla = Tables<'registros_completos'>
 
 export type NuevoNadador = TablesInsert<'nadadores'>
 export type NuevaCompetencia = TablesInsert<'competencias'>
 export type NuevoRegistro = TablesInsert<'registros'>
+export type NuevaPrueba = TablesInsert<'pruebas'>
+export type NuevoRegistroCompletoTabla = TablesInsert<'registros_completos'>
+
+// ===== ENUMS PARA NUEVAS TABLAS =====
+
+export enum Curso {
+  Largo = 'largo',
+  Corto = 'corto'
+}
+
+export enum MetodoRegistro {
+  Manual = 'manual',
+  Electronico = 'electronico',
+  VideoAnalisis = 'video_analisis',
+  Cronometro = 'cronometro',
+  ManualCorregido = 'manual_corregido'
+}
 
 // ===== TIPOS EXTENDIDOS CON RELACIONES =====
 
@@ -329,6 +507,19 @@ export interface CompetenciaConRegistros extends Competencia {
   registros?: Registro[]
   totalNadadores?: number
   totalRegistros?: number
+}
+
+export interface PruebaConInfo extends Prueba {
+  distancia?: Distancia
+  estilo?: Estilo
+  registrosCompletos?: RegistroCompletoTabla[]
+}
+
+export interface RegistroCompletoConRelaciones extends RegistroCompletoTabla {
+  nadador?: Nadador
+  prueba?: PruebaConInfo
+  competencia?: Competencia
+  fase?: Fase
 }
 
 // ===== TIPOS PARA ANÁLISIS Y MÉTRICAS =====

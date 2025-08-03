@@ -5,7 +5,7 @@
 
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
-import type { RegistroCompleto, Parametro } from '@/lib/types/database'
+import type { RegistroCompleto, Parametro, RegistroCompletoTabla, NuevoRegistroCompletoTabla } from '@/lib/types/database'
 import type { MetricFormData, AutomaticMetrics } from '@/lib/types/metrics'
 
 // ===== TIPOS DEL STORE =====
@@ -13,6 +13,7 @@ import type { MetricFormData, AutomaticMetrics } from '@/lib/types/metrics'
 interface MetricsStore {
   // Estado
   records: RegistroCompleto[]
+  registrosCompletos: RegistroCompletoTabla[]
   parametros: Parametro[]
   loading: boolean
   error: string | null
@@ -30,11 +31,28 @@ interface MetricsStore {
   // Obtener registros
   fetchRecords: (swimmerId?: number) => Promise<void>
   
+  // Obtener registros completos
+  fetchRegistrosCompletos: (filters?: {
+    nadadorId?: number
+    competenciaId?: number
+    fechaDesde?: string
+    fechaHasta?: string
+  }) => Promise<void>
+  
   // Crear nuevo registro
   createRecord: (data: MetricFormData) => Promise<RegistroCompleto | null>
   
+  // Crear nuevo registro completo
+  createRegistroCompleto: (data: Partial<NuevoRegistroCompletoTabla>) => Promise<RegistroCompletoTabla | null>
+  
+  // Actualizar registro completo
+  updateRegistroCompleto: (id: number, data: Partial<NuevoRegistroCompletoTabla>) => Promise<void>
+  
   // Eliminar registro
   deleteRecord: (id: number) => Promise<void>
+  
+  // Eliminar registro completo
+  deleteRegistroCompleto: (id: number) => Promise<void>
   
   // ===== CÁLCULOS =====
   
@@ -61,6 +79,7 @@ interface MetricsStore {
 
 const initialState = {
   records: [],
+  registrosCompletos: [],
   parametros: [],
   loading: false,
   error: null,
@@ -151,6 +170,53 @@ export const useMetricsStore = create<MetricsStore>((set, get) => ({
     }
   },
   
+  fetchRegistrosCompletos: async (filters?: {
+    nadadorId?: number
+    competenciaId?: number
+    fechaDesde?: string
+    fechaHasta?: string
+  }) => {
+    set({ loading: true, error: null })
+    
+    try {
+      let query = supabase
+        .from('registros_completos')
+        .select('*')
+      
+      if (filters) {
+        if (filters.nadadorId) {
+          query = query.eq('id_nadador', filters.nadadorId)
+        }
+        if (filters.competenciaId) {
+          query = query.eq('competencia_id', filters.competenciaId)
+        }
+        if (filters.fechaDesde) {
+          query = query.gte('fecha', filters.fechaDesde)
+        }
+        if (filters.fechaHasta) {
+          query = query.lte('fecha', filters.fechaHasta)
+        }
+      }
+      
+      const { data, error } = await query
+      
+      if (error) {
+        throw new Error(error.message)
+      }
+      
+      set({
+        registrosCompletos: data || [],
+        loading: false,
+      })
+      
+    } catch (error) {
+      set({
+        loading: false,
+        error: error instanceof Error ? error.message : 'Error al cargar registros completos',
+      })
+    }
+  },
+  
   createRecord: async (data: MetricFormData) => {
     set({ loading: true, error: null })
     
@@ -233,6 +299,88 @@ export const useMetricsStore = create<MetricsStore>((set, get) => ({
     }
   },
   
+  createRegistroCompleto: async (data: Partial<NuevoRegistroCompletoTabla>) => {
+    set({ loading: true, error: null })
+    
+    try {
+      // Validar campos requeridos
+      if (!data.id_nadador || !data.prueba_id || !data.fecha) {
+        throw new Error('Faltan campos requeridos: id_nadador, prueba_id, fecha')
+      }
+      
+      const { data: insertedData, error } = await supabase
+        .from('registros_completos')
+        .insert({
+          id_nadador: data.id_nadador,
+          prueba_id: data.prueba_id,
+          fecha: data.fecha,
+          competencia_id: data.competencia_id || null,
+          fase_id: data.fase_id || null,
+          t15_1: data.t15_1 || null,
+          brz_1: data.brz_1 || null,
+          t25_1: data.t25_1 || null,
+          f1: data.f1 || null,
+          t15_2: data.t15_2 || null,
+          brz_2: data.brz_2 || null,
+          t25_2: data.t25_2 || null,
+          f2: data.f2 || null,
+          t_total: data.t_total || null,
+          brz_total: data.brz_total || null,
+          metodo_registro: data.metodo_registro || 'manual'
+        })
+        .select('*')
+        .single()
+      
+      if (error) {
+        throw new Error(error.message)
+      }
+      
+      set(state => ({
+        registrosCompletos: [...state.registrosCompletos, insertedData],
+        loading: false,
+      }))
+      
+      return insertedData
+      
+    } catch (error) {
+      set({
+        loading: false,
+        error: error instanceof Error ? error.message : 'Error al crear registro completo',
+      })
+      return null
+    }
+  },
+  
+  updateRegistroCompleto: async (id: number, data: Partial<NuevoRegistroCompletoTabla>) => {
+    set({ loading: true, error: null })
+    
+    try {
+          const { data: updatedData, error } = await supabase
+      .from('registros_completos')
+      .update(data)
+      .eq('id', id)
+      .select('*')
+      .single()
+    
+    if (error) {
+      throw new Error(error.message)
+    }
+    
+    set(state => ({
+      registrosCompletos: state.registrosCompletos.map(r =>
+        r.id === id ? updatedData : r
+      ),
+      loading: false,
+    }))
+      
+    } catch (error) {
+      set({
+        loading: false,
+        error: error instanceof Error ? error.message : 'Error al actualizar registro completo',
+      })
+    }
+  },
+  
   deleteRecord: async (id: number) => {
     set({ loading: true, error: null })
     
@@ -256,6 +404,32 @@ export const useMetricsStore = create<MetricsStore>((set, get) => ({
       set({
         loading: false,
         error: error instanceof Error ? error.message : 'Error al eliminar registro',
+      })
+    }
+  },
+  
+  deleteRegistroCompleto: async (id: number) => {
+    set({ loading: true, error: null })
+    
+    try {
+          const { error } = await supabase
+      .from('registros_completos')
+      .delete()
+      .eq('id', id)
+    
+    if (error) {
+      throw new Error(error.message)
+    }
+    
+    set(state => ({
+      registrosCompletos: state.registrosCompletos.filter(r => r.id !== id),
+      loading: false,
+    }))
+      
+    } catch (error) {
+      set({
+        loading: false,
+        error: error instanceof Error ? error.message : 'Error al eliminar registro completo',
       })
     }
   },

@@ -5,31 +5,44 @@
 
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { MetricsForm } from '@/components/forms/MetricsForm'
 import MainLayout from '@/components/layout/MainLayout'
 import { type MetricFormData } from '@/lib/utils/validators'
+import { toast } from 'react-hot-toast'
+import { createLogger } from '@/lib/utils/logger'
+
+const logger = createLogger('MetricsPage')
 
 export default function MetricsPage() {
-  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Función para manejar el envío del formulario
   const handleSubmit = async (data: MetricFormData) => {
+    setIsSubmitting(true);
+    const toastId = toast.loading('Guardando registro...');
     try {
-      console.log('📊 Datos de métricas recibidos:', data)
-      
-      // TODO: Integrar con API de AquaLytics
-      // Por ahora simulamos el guardado
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Mostrar feedback exitoso (por ahora en consola)
-      console.log('✅ Métricas guardadas exitosamente')
-      alert('¡Métricas guardadas exitosamente! 🏊‍♂️')
+      const response = await fetch('/api/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Error al guardar el registro');
+      }
+
+      toast.success('¡Éxito! El registro se ha guardado correctamente.', { id: toastId });
       
     } catch (error) {
-      console.error('❌ Error guardando métricas:', error)
-      alert('Error al guardar las métricas. Por favor intenta nuevamente.')
+      logger.error('❌ Error guardando métricas:', error);
+      const errorMessage = error instanceof Error ? error.message : 'No se pudo guardar el registro.';
+      toast.error(`Error: ${errorMessage}`, { id: toastId });
+    } finally {
+      setIsSubmitting(false);
     }
-  }
+  };
   
   return (
     <MainLayout>
@@ -45,7 +58,7 @@ export default function MetricsPage() {
         </div>
         
         <div className="max-w-6xl mx-auto">
-          <MetricsForm onSubmit={handleSubmit} />
+          <MetricsForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
         </div>
       </div>
     </MainLayout>

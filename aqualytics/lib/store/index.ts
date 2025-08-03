@@ -14,6 +14,9 @@ export { useMetricsStore } from './metrics-store'
 // UI Store
 export { useUIStore } from './ui-store'
 
+// Hybrid Store
+export { useHybridStore } from './hybrid-store'
+
 // ===== CONFIGURACIÓN DE STORES =====
 
 /**

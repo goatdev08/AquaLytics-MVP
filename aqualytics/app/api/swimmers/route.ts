@@ -6,24 +6,109 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/supabase'
 import { validateSwimmer } from '@/lib/utils/validators'
+import { createLogger } from '@/lib/utils/logger'
 
+const logger = createLogger('SwimmersAPI')
 
-// GET - Obtener todos los nadadores
+export const revalidate = 0 // <-- LA SOLUCIÓN: No cachear esta ruta
+
+// GET - Obtener todos los nadadores (Refactorizado para leer datos en tiempo real)
 export async function GET(request: NextRequest) {
   try {
     const supabase = createSupabaseAdmin()
     const { searchParams } = new URL(request.url)
     
-    // Parámetros de búsqueda opcionales
     const search = searchParams.get('search')
     const limit = searchParams.get('limit')
     const offset = searchParams.get('offset')
     const includeStats = searchParams.get('includeStats') === 'true'
+    const competenciaId = searchParams.get('competencia')
+    const pruebaId = searchParams.get('prueba')
 
-    let query = supabase
+    // Si se especifica una competencia (y opcionalmente una prueba), obtener nadadores disponibles
+    if (competenciaId) {
+      let query = supabase
+        .from('registros')
+        .select(`
+          id_nadador,
+          fecha,
+          fase_id,
+          nadadores(nombre),
+          fases(nombre)
+        `)
+        .eq('competencia_id', parseInt(competenciaId))
+      
+      // Si también se especifica una prueba, filtrar por esa prueba específica
+      if (pruebaId) {
+        query = query.eq('prueba_id', parseInt(pruebaId))
+      }
+      
+      const { data: swimmersInCompetition, error } = await query.order('fecha', { ascending: false })
+      
+      if (error) {
+        logger.error('Error fetching swimmers for competition:', error)
+        return NextResponse.json(
+          { success: false, error: 'Error obteniendo nadadores de la competencia' },
+          { status: 500 }
+        )
+      }
+      
+      // Agrupar por nadador y obtener registros únicos
+      const swimmersMap = new Map()
+      swimmersInCompetition?.forEach(record => {
+        const swimmerId = record.id_nadador
+        if (!swimmersMap.has(swimmerId)) {
+          swimmersMap.set(swimmerId, {
+            id_nadador: swimmerId,
+            nombre: record.nadadores?.nombre || 'Sin nombre',
+            fecha: record.fecha,
+            fase_id: record.fase_id,
+            fase_nombre: record.fases?.nombre || 'Sin fase',
+            total_registros: 0
+          })
+        }
+        swimmersMap.get(swimmerId).total_registros += 1
+      })
+      
+      const result = Array.from(swimmersMap.values())
+      
+      const mensaje = pruebaId 
+        ? `${result.length} nadadores encontrados en la competencia y prueba especificada`
+        : `${result.length} nadadores encontrados en la competencia`
+      
+      return NextResponse.json({
+        success: true,
+        data: result,
+        total: result.length,
+        message: mensaje
+      })
+    }
+
+    let query;
+
+    // Construir la consulta base
+    if (includeStats) {
+      // Si se piden estadísticas, contamos las PRUEBAS COMPLETAS (no registros individuales)
+      // Cada prueba completa = combinación única de (prueba_id + nadador_id + fecha)
+      // CORREGIDO: Usar LEFT JOIN para incluir nadadores sin registros
+      query = supabase
+        .from('nadadores')
+        .select(`
+          *,
+          registros(
+            prueba_id,
+            fecha,
+            created_at
+          )
+        `)
+    } else {
+      // Si no, solo los datos del nadador
+      query = supabase
       .from('nadadores')
       .select('*')
-      .order('nombre')
+    }
+
+    query.order('nombre');
 
     // Aplicar filtro de búsqueda si existe
     if (search) {
@@ -40,50 +125,63 @@ export async function GET(request: NextRequest) {
     const { data: nadadores, error, count } = await query
 
     if (error) {
-      console.error('Error fetching swimmers:', error)
+      logger.error('Error fetching swimmers:', error)
       return NextResponse.json(
         { error: 'Error al obtener nadadores', details: error.message },
         { status: 500 }
       )
     }
 
-    // Si se solicitan estadísticas, obtener información adicional
-    let nadadoresConStats = nadadores
+    // Adaptar la estructura de datos para el frontend solo si se incluyen estadísticas
+    let responseData = nadadores;
 
     if (includeStats && nadadores) {
-      nadadoresConStats = await Promise.all(
-        nadadores.map(async (nadador) => {
-          // Obtener estadísticas básicas del nadador
-          const { data: stats } = await supabase
-            .from('registros')
-            .select('registro_id, fecha, competencia_id')
-            .eq('id_nadador', nadador.id_nadador)
-            .order('fecha', { ascending: false })
-            .limit(1)
-
-          const { count: totalRegistros } = await supabase
-            .from('registros')
-            .select('*', { count: 'exact', head: true })
-            .eq('id_nadador', nadador.id_nadador)
-
+      type SwimmerWithRegistros = typeof nadadores[number] & {
+        registros: Array<{
+          prueba_id: number;
+          fecha: string;
+          created_at: string;
+        }>;
+      };
+      
+      responseData = nadadores.map(nadador => {
+        const nadadorConRegistros = nadador as SwimmerWithRegistros;
+        
+        // CORREGIDO: Manejar nadadores sin registros (registros puede ser null o array vacío)
+        const registrosValidos = nadadorConRegistros.registros || [];
+        
+        // Contar pruebas ÚNICAS (agrupando por prueba_id + fecha)
+        // Esto da el número real de pruebas completas realizadas
+        const pruebasUnicas = new Set(
+          registrosValidos.map(registro => 
+            `${registro.prueba_id}-${registro.fecha}`
+          )
+        );
+        
+        // Encontrar la fecha más reciente de competencia
+        const fechasCompetencia = registrosValidos
+          .map(r => new Date(r.created_at))
+          .sort((a, b) => b.getTime() - a.getTime());
+        
           return {
             ...nadador,
-            totalRegistros: totalRegistros || 0,
-            ultimaParticipacion: stats?.[0]?.fecha || null
+          total_competencias: 0, // Placeholder - se podría calcular más adelante
+          total_pruebas: 0, // Placeholder - se podría calcular más adelante  
+          total_registros: pruebasUnicas.size, // CORREGIDO: ahora cuenta pruebas completas
+          ultima_competencia: fechasCompetencia.length > 0 ? fechasCompetencia[0].toISOString() : null
           }
-        })
-      )
+      });
     }
 
     return NextResponse.json({
       success: true,
-      data: nadadoresConStats,
+      data: responseData,
       total: count,
       message: `${nadadores?.length || 0} nadadores encontrados`
     })
 
   } catch (error) {
-    console.error('Unexpected error in GET /api/swimmers:', error)
+    logger.error('Unexpected error in GET /api/swimmers:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
@@ -137,7 +235,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating swimmer:', error)
+      logger.error('Error creating swimmer:', error)
       return NextResponse.json(
         { error: 'Error al crear nadador', details: error.message },
         { status: 500 }
@@ -151,7 +249,7 @@ export async function POST(request: NextRequest) {
     }, { status: 201 })
 
   } catch (error) {
-    console.error('Unexpected error in POST /api/swimmers:', error)
+    logger.error('Unexpected error in POST /api/swimmers:', error)
     
     // Manejar errores de JSON malformado
     if (error instanceof SyntaxError) {
@@ -239,7 +337,7 @@ export async function PUT(request: NextRequest) {
       .single()
 
     if (updateError) {
-      console.error('Error updating swimmer:', updateError)
+      logger.error('Error updating swimmer:', updateError)
       return NextResponse.json(
         { error: 'Error al actualizar nadador', details: updateError.message },
         { status: 500 }
@@ -253,7 +351,7 @@ export async function PUT(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Unexpected error in PUT /api/swimmers:', error)
+    logger.error('Unexpected error in PUT /api/swimmers:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
@@ -261,13 +359,13 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE - Eliminar nadador
+// DELETE - Eliminar nadador (con borrado en cascada desde la BD)
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const id_nadador = searchParams.get('id')
+    const id = searchParams.get('id')
 
-    if (!id_nadador) {
+    if (!id) {
       return NextResponse.json(
         { error: 'ID de nadador requerido para eliminación' },
         { status: 400 }
@@ -275,71 +373,34 @@ export async function DELETE(request: NextRequest) {
     }
 
     const supabase = createSupabaseAdmin()
-    const swimmerIdNum = parseInt(id_nadador, 10)
+    const swimmerIdNum = parseInt(id, 10)
 
-    // Verificar que el nadador existe
     const { data: existingSwimmer, error: fetchError } = await supabase
       .from('nadadores')
-      .select('id_nadador, nombre')
+      .select('nombre')
       .eq('id_nadador', swimmerIdNum)
       .single()
 
     if (fetchError || !existingSwimmer) {
-      return NextResponse.json(
-        { error: 'Nadador no encontrado' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Nadador no encontrado' }, { status: 404 })
     }
 
-    // Verificar si el nadador tiene registros asociados
-    const { count: recordsCount, error: countError } = await supabase
-      .from('registros')
-      .select('*', { count: 'exact', head: true })
-      .eq('id_nadador', swimmerIdNum)
-
-    if (countError) {
-      console.error('Error checking swimmer records:', countError)
-      return NextResponse.json(
-        { error: 'Error al verificar registros del nadador' },
-        { status: 500 }
-      )
-    }
-
-    // Si tiene registros, no permitir eliminación (integridad referencial)
-    if (recordsCount && recordsCount > 0) {
-      return NextResponse.json(
-        { 
-          error: 'No se puede eliminar el nadador porque tiene registros asociados',
-          details: `El nadador tiene ${recordsCount} registros. Elimine primero los registros.`
-        },
-        { status: 409 }
-      )
-    }
-
-    // Eliminar nadador
     const { error: deleteError } = await supabase
       .from('nadadores')
       .delete()
       .eq('id_nadador', swimmerIdNum)
 
     if (deleteError) {
-      console.error('Error deleting swimmer:', deleteError)
-      return NextResponse.json(
-        { error: 'Error al eliminar nadador', details: deleteError.message },
-        { status: 500 }
-      )
+      logger.error('Error deleting swimmer:', deleteError)
+      return NextResponse.json({ error: 'Error al eliminar nadador', details: deleteError.message }, { status: 500 })
     }
 
     return NextResponse.json({
       success: true,
-      message: `Nadador "${existingSwimmer.nombre}" eliminado exitosamente`
+      message: `Nadador "${existingSwimmer.nombre}" y todos sus registros han sido eliminados.`
     })
-
   } catch (error) {
-    console.error('Unexpected error in DELETE /api/swimmers:', error)
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    )
+    logger.error('Unexpected error in DELETE /api/swimmers:', error)
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 } 

@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Providers from "@/components/providers/Providers";
+import { Toaster } from 'react-hot-toast';
+import Providers from '@/components/providers/Providers';
+import { cn } from "@/lib/utils/cn";
+import ErrorBoundary from '@/components/providers/ErrorBoundary';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,17 +55,42 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-TileColor" content="#DC2626" />
         <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-        <link rel="manifest" href="/manifest.json" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
         suppressHydrationWarning
       >
         <Providers>
-          <div className="relative min-h-screen flex flex-col">
-            {children}
-          </div>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+                border: '1px solid var(--border)',
+              },
+              success: {
+                duration: 2000,
+                theme: {
+                  primary: 'green',
+                  secondary: 'black',
+                },
+              },
+              error: {
+                duration: 4000,
+                theme: {
+                  primary: 'red',
+                  secondary: 'black',
+                },
+              },
+            }}
+          />
+          <ErrorBoundary>
+            <div className="relative min-h-screen flex flex-col">
+              {children}
+            </div>
+          </ErrorBoundary>
         </Providers>
       </body>
     </html>

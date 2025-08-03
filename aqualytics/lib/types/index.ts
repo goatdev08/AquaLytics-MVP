@@ -20,16 +20,22 @@ export type {
   Fase,
   Parametro,
   Registro,
+  Prueba,
+  RegistroCompletoTabla,
   
   // Tipos para creación de entidades
   NuevoNadador,
   NuevaCompetencia,
   NuevoRegistro,
+  NuevaPrueba,
+  NuevoRegistroCompletoTabla,
   
   // Tipos extendidos con relaciones
   RegistroCompleto,
   NadadorConRegistros,
   CompetenciaConRegistros,
+  PruebaConInfo,
+  RegistroCompletoConRelaciones,
   
   // Tipos para análisis
   MetricaAnalisis,
@@ -53,6 +59,12 @@ export type {
   SupabaseDatabase,
   SupabaseSchema,
   SupabaseTables
+} from './database'
+
+// ===== EXPORTAR ENUMS DE BASE DE DATOS =====
+export {
+  Curso,
+  MetodoRegistro
 } from './database'
 
 // ===== EXPORTAR CONSTANTES DE BASE DE DATOS =====
