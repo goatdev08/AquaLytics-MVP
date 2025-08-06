@@ -65,23 +65,17 @@ const BestTimesChart: React.FC = () => {
       setIsLoading(true);
       setError(null);
       
-      console.log(`🏊 Fetching best times: ${distance}m ${style} curso ${course}`);
-      
       try {
         const response = await fetch(`/api/query/best-times?style=${style}&distance=${distance}&course=${course}`);
         const result = await response.json();
         
-        console.log(`📊 API Response:`, result);
-        
         if (result.success) {
           setData(result.data);
-          console.log(`✅ Data loaded: ${result.data.length} records`);
         } else {
           setError(result.error || 'Error desconocido');
           setData([]);
         }
       } catch (error) {
-        console.error("❌ Error fetching best times:", error);
         setError('Error de conexión con el servidor');
         setData([]);
       } finally {
@@ -108,6 +102,25 @@ const BestTimesChart: React.FC = () => {
     }]
   };
 
+  // Función para obtener colores del tema actual
+  const getThemeColors = () => {
+    if (typeof window !== 'undefined') {
+      const style = getComputedStyle(document.documentElement);
+      return {
+        foreground: `hsl(${style.getPropertyValue('--foreground')})`,
+        mutedForeground: `hsl(${style.getPropertyValue('--muted-foreground')})`,
+        border: `hsl(${style.getPropertyValue('--border')})`
+      };
+    }
+    return {
+      foreground: 'rgb(23, 23, 23)', // fallback para light theme
+      mutedForeground: 'rgb(100, 116, 139)',
+      border: 'rgba(156, 163, 175, 0.3)'
+    };
+  };
+
+  const themeColors = getThemeColors();
+
   const chartOptions = {
     indexAxis: 'y' as const,
     responsive: true,
@@ -123,7 +136,7 @@ const BestTimesChart: React.FC = () => {
           size: 14,
           weight: 'bold' as const,
         },
-        color: 'rgb(55, 65, 81)', // Compatible con tema claro
+        color: themeColors.foreground,
       },
       tooltip: {
         callbacks: {
@@ -151,16 +164,16 @@ const BestTimesChart: React.FC = () => {
       x: {
         beginAtZero: true,
         grid: {
-          color: 'rgba(156, 163, 175, 0.3)', // Compatible con ambos temas
+          color: themeColors.border,
         },
         ticks: {
           callback: (value: any) => `${value}s`,
-          color: 'rgb(107, 114, 128)', // Compatible con ambos temas
+          color: themeColors.mutedForeground,
         },
         title: {
           display: true,
           text: 'Tiempo (segundos)',
-          color: 'rgb(107, 114, 128)',
+          color: themeColors.mutedForeground,
           font: {
             size: 12,
             weight: 'bold' as const,
@@ -172,7 +185,7 @@ const BestTimesChart: React.FC = () => {
           display: false, // Ocultar grid vertical para más limpieza
         },
         ticks: {
-          color: 'rgb(55, 65, 81)', // Compatible con ambos temas
+          color: themeColors.foreground,
           font: {
             size: 12,
             weight: 'bold' as const,
@@ -189,10 +202,10 @@ const BestTimesChart: React.FC = () => {
 
     if (error) {
       return (
-        <div className="h-[320px] w-full flex items-center justify-center bg-red-50 dark:bg-red-900/20 rounded-md">
+        <div className="h-[320px] w-full flex items-center justify-center bg-destructive/10 border border-destructive/20 rounded-md">
           <div className="text-center">
-            <div className="text-red-500 text-4xl mb-2">⚠️</div>
-            <p className="text-sm text-red-600 dark:text-red-400 font-medium">{error}</p>
+            <div className="text-destructive text-4xl mb-2">⚠️</div>
+            <p className="text-sm text-destructive font-medium">{error}</p>
           </div>
         </div>
       );
@@ -200,14 +213,14 @@ const BestTimesChart: React.FC = () => {
 
     if (data.length === 0) {
       return (
-        <div className="h-[320px] w-full flex items-center justify-center bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
+        <div className="h-[320px] w-full flex items-center justify-center bg-muted border border-border rounded-md">
           <div className="text-center">
             <div className="text-6xl mb-4">🏊‍♂️</div>
-            <h3 className="text-lg font-semibold mb-2 text-yellow-800 dark:text-yellow-300">No hay registros</h3>
-            <p className="text-sm text-yellow-700 dark:text-yellow-400">
+            <h3 className="text-lg font-semibold mb-2 text-foreground">No hay registros</h3>
+            <p className="text-sm text-muted-foreground">
               No hay datos para {distance}m {style} curso {course}
             </p>
-            <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-1">
+            <p className="text-xs text-muted-foreground/80 mt-1">
               Prueba con otra combinación de filtros
             </p>
           </div>
@@ -236,8 +249,8 @@ const BestTimesChart: React.FC = () => {
       onClick={onClick}
       className={`px-3 py-1.5 text-sm rounded-full transition-all duration-200 font-medium
         ${active 
-          ? 'bg-gradient-to-r from-orange-400 to-orange-600 text-white shadow-lg transform scale-105' 
-          : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 hover:shadow-md'
+          ? 'bg-gradient-to-r from-phoenix-orange to-phoenix-red text-white shadow-lg transform scale-105' 
+          : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground hover:shadow-md border border-border hover:border-phoenix-orange/30'
         }`}
     >
       {children}
@@ -253,8 +266,8 @@ const BestTimesChart: React.FC = () => {
               <span className="text-white text-lg font-bold">🏆</span>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Mejores Tiempos</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Rankings de rendimiento</p>
+              <h3 className="text-lg font-semibold text-foreground">Mejores Tiempos</h3>
+              <p className="text-sm text-muted-foreground">Rankings de rendimiento</p>
             </div>
           </div>
           {data.length > 0 && (
@@ -267,7 +280,7 @@ const BestTimesChart: React.FC = () => {
         {/* Filtros optimizados */}
         <div className="space-y-4 mb-6">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-1 rounded-full">
+            <span className="text-sm font-semibold text-muted-foreground bg-muted px-3 py-1 rounded-full">
               🏊 Estilo:
             </span>
             <div className="flex flex-wrap gap-2">
@@ -284,7 +297,7 @@ const BestTimesChart: React.FC = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-1 rounded-full">
+            <span className="text-sm font-semibold text-muted-foreground bg-muted px-3 py-1 rounded-full">
               📏 Distancia:
             </span>
             <div className="flex flex-wrap gap-2">
@@ -301,7 +314,7 @@ const BestTimesChart: React.FC = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-1 rounded-full">
+            <span className="text-sm font-semibold text-muted-foreground bg-muted px-3 py-1 rounded-full">
               🏊‍♀️ Curso:
             </span>
             <div className="flex flex-wrap gap-2">

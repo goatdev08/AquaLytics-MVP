@@ -124,6 +124,25 @@ const StylesDistributionChart: React.FC = () => {
     ],
   };
 
+  // Función para obtener colores del tema actual
+  const getThemeColors = () => {
+    if (typeof window !== 'undefined') {
+      const style = getComputedStyle(document.documentElement);
+      return {
+        foreground: `hsl(${style.getPropertyValue('--foreground')})`,
+        mutedForeground: `hsl(${style.getPropertyValue('--muted-foreground')})`,
+        border: `hsl(${style.getPropertyValue('--border')})`
+      };
+    }
+    return {
+      foreground: 'rgb(23, 23, 23)', // fallback para light theme
+      mutedForeground: 'rgb(100, 116, 139)',
+      border: 'rgba(156, 163, 175, 0.3)'
+    };
+  };
+
+  const themeColors = getThemeColors();
+
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -138,17 +157,17 @@ const StylesDistributionChart: React.FC = () => {
             size: 14,
             weight: 'normal' as const,
           },
-          color: 'rgb(75, 85, 99)', // text-gray-600
+          color: themeColors.mutedForeground,
           boxWidth: 14,
           boxHeight: 14,
         },
       },
       tooltip: {
         enabled: true,
-        backgroundColor: 'rgba(17, 24, 39, 0.96)', // gray-900 with higher opacity
-        titleColor: '#F9FAFB', // gray-50
-        bodyColor: '#F3F4F6',  // gray-100
-        borderColor: 'rgba(156, 163, 175, 0.3)', // gray-400 with opacity
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        borderColor: '#ea580c', // Phoenix orange border
         borderWidth: 1,
         cornerRadius: 10,
         titleFont: {
@@ -196,7 +215,7 @@ const StylesDistributionChart: React.FC = () => {
     return (
       <Card className="p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          <h3 className="text-lg font-semibold text-foreground mb-2">
             Distribución de Estilos
           </h3>
           <p className="text-red-600 dark:text-red-400">{error}</p>
@@ -215,12 +234,12 @@ const StylesDistributionChart: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+          <h3 className="text-lg font-bold text-foreground">
             Distribución de Estilos
           </h3>
         </div>
         <div className="flex gap-2">
-          <span className="px-3 py-1 bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 text-blue-800 dark:text-blue-300 text-sm font-semibold rounded-full shadow-sm">
+          <span className="px-3 py-1 bg-gradient-to-r from-phoenix-orange/10 to-phoenix-red/10 border border-phoenix-orange/20 text-phoenix-orange dark:text-phoenix-orange-light text-sm font-semibold rounded-full shadow-sm">
             {totalRegistros} registros
           </span>
         </div>
@@ -236,9 +255,9 @@ const StylesDistributionChart: React.FC = () => {
             </div>
           </div>
         ) : data.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-12">
+                      <div className="flex-1 flex flex-col items-center justify-center py-12">
             <div className="text-8xl mb-6 opacity-60">📊</div>
-            <p className="text-gray-500 dark:text-gray-400 text-center font-medium text-lg">
+            <p className="text-muted-foreground text-center font-medium text-lg">
               No hay datos disponibles
             </p>
           </div>
@@ -250,7 +269,7 @@ const StylesDistributionChart: React.FC = () => {
             </div>
 
             {/* Estadísticas (opcional si se quieren mantener) */}
-            <div className="grid grid-cols-3 gap-6 pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
+            <div className="grid grid-cols-3 gap-6 pt-4 border-t border-border mt-4">
               <div className="text-center">
                 <div className="flex items-center justify-center mb-2">
                   <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-full">
@@ -259,10 +278,10 @@ const StylesDistributionChart: React.FC = () => {
                     </svg>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                <p className="text-2xl font-bold text-foreground mb-1">
                   {data.length}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Estilos</p>
+                <p className="text-sm text-muted-foreground font-medium">Estilos</p>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center mb-2">
@@ -272,10 +291,10 @@ const StylesDistributionChart: React.FC = () => {
                     </svg>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                <p className="text-2xl font-bold text-foreground mb-1">
                   {totalRegistros}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Registros</p>
+                <p className="text-sm text-muted-foreground font-medium">Registros</p>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center mb-2">
@@ -285,10 +304,10 @@ const StylesDistributionChart: React.FC = () => {
                     </svg>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                <p className="text-2xl font-bold text-foreground mb-1">
                   {totalNadadores}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Nadadores</p>
+                <p className="text-sm text-muted-foreground font-medium">Nadadores</p>
               </div>
             </div>
           </div>
