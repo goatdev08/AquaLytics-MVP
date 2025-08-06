@@ -24,6 +24,28 @@ const StylesDistributionChart: React.FC = () => {
   const [totalNadadores, setTotalNadadores] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDarkTheme, setIsDarkTheme] = useState(false);
+
+  // Detectar cambios de tema
+  useEffect(() => {
+    const updateTheme = () => {
+      if (typeof window !== 'undefined') {
+        setIsDarkTheme(document.documentElement.classList.contains('dark'));
+      }
+    };
+
+    // Configurar el tema inicial
+    updateTheme();
+
+    // Observar cambios en la clase del documentElement
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -124,21 +146,23 @@ const StylesDistributionChart: React.FC = () => {
     ],
   };
 
-  // Función para obtener colores del tema actual
+  // Función para obtener colores del tema actual compatible con Chart.js
   const getThemeColors = () => {
-    if (typeof window !== 'undefined') {
-      const style = getComputedStyle(document.documentElement);
+    if (isDarkTheme) {
+      // Colores tema oscuro
       return {
-        foreground: `hsl(${style.getPropertyValue('--foreground')})`,
-        mutedForeground: `hsl(${style.getPropertyValue('--muted-foreground')})`,
-        border: `hsl(${style.getPropertyValue('--border')})`
+        foreground: '#ededed',
+        mutedForeground: '#94a3b8', 
+        border: 'rgba(51, 65, 85, 0.3)'
+      };
+    } else {
+      // Colores tema claro
+      return {
+        foreground: '#171717',
+        mutedForeground: '#64748b',
+        border: 'rgba(156, 163, 175, 0.3)'
       };
     }
-    return {
-      foreground: 'rgb(23, 23, 23)', // fallback para light theme
-      mutedForeground: 'rgb(100, 116, 139)',
-      border: 'rgba(156, 163, 175, 0.3)'
-    };
   };
 
   const themeColors = getThemeColors();
